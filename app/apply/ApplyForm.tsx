@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "@mantine/form";
 import {
   Alert,
@@ -114,6 +114,21 @@ export function ApplyForm() {
     },
   });
 
+  useEffect(() => {
+    const dob = form.values.dateOfBirth;
+    const [month, day, year] = dob.split("/").map(Number);
+    if (!month || !day || !year || year < 1900) return;
+    const today = new Date();
+    const birthDate = new Date(year, month - 1, day);
+    if (isNaN(birthDate.getTime())) return;
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const hasHadBirthdayThisYear =
+      today.getMonth() > birthDate.getMonth() ||
+      (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
+    if (!hasHadBirthdayThisYear) age--;
+    if (age >= 0 && age < 120) form.setFieldValue("age", String(age));
+  }, [form.values.dateOfBirth]);
+
   const wasPreviousMember = form.values.previousMember === "yes";
   const hasFelony = form.values.felonyConviction === "yes";
   const fullName = form.values.signature.trim() ||
@@ -196,7 +211,7 @@ export function ApplyForm() {
               <TextInput label="Date of birth" placeholder="MM/DD/YYYY" required {...form.getInputProps("dateOfBirth")} />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 2 }}>
-              <TextInput label="Age" placeholder="30" required {...form.getInputProps("age")} />
+              <TextInput label="Age" placeholder="—" readOnly {...form.getInputProps("age")} />
             </Grid.Col>
           </Grid>
 
