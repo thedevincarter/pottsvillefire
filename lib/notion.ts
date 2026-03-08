@@ -13,6 +13,15 @@ export type RunLogEntry = {
   response: string | null;
 };
 
+function selectName(prop: { type: string; select?: unknown } | undefined): string | null {
+  if (prop?.type !== "select") return null;
+  const s = prop.select;
+  if (s && typeof s === "object" && "name" in s && typeof s.name === "string") {
+    return s.name;
+  }
+  return null;
+}
+
 export async function getRunLog(): Promise<RunLogEntry[]> {
   const response = await notion.dataSources.query({
     data_source_id: process.env.NOTION_RUN_LOG_DATABASE_ID!,
@@ -25,24 +34,13 @@ export async function getRunLog(): Promise<RunLogEntry[]> {
     const date =
       props.Date?.type === "date" ? props.Date.date?.start ?? null : null;
 
-    const callType =
-      props["Call Type"]?.type === "select"
-        ? props["Call Type"].select?.name ?? null
-        : null;
-
-    const complaint =
-      props.Complaint?.type === "select"
-        ? props.Complaint.select?.name ?? null
-        : null;
+    const callType = selectName(props["Call Type"] as { type: string; select?: unknown });
+    const complaint = selectName(props.Complaint as { type: string; select?: unknown });
+    const response = selectName(props.Response as { type: string; select?: unknown });
 
     const address =
       props.Address?.type === "rich_text"
         ? props.Address.rich_text.map((t) => t.plain_text).join("") || null
-        : null;
-
-    const response =
-      props.Response?.type === "select"
-        ? props.Response.select?.name ?? null
         : null;
 
     return { id: page.id, date, callType, complaint, address, response };
