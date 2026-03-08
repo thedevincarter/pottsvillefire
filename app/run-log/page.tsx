@@ -2,6 +2,8 @@ import { Container, Text, Title } from "@mantine/core";
 import { getRunLog, RunLogEntry } from "@/lib/notion";
 import { RunLogTabs } from "./RunLogTabs";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Run Log | Pottsville Fire",
   description: "Pottsville Fire Department run log",
