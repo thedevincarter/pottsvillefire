@@ -27,10 +27,10 @@ export function ApplyForm() {
 
   async function handleSubmit(values: typeof form.values) {
     try {
-      await fetch("/", {
+      await fetch("/__forms.html", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: encode({ "form-name": "apply", ...values }),
+        body: encode({ "form-name": "department-application", ...values }),
       });
       setSubmitted(true);
     } catch {
@@ -55,7 +55,7 @@ export function ApplyForm() {
       onSubmit={form.onSubmit(handleSubmit)}
       data-netlify="true"
     >
-      <input type="hidden" name="form-name" value="apply" />
+      <input type="hidden" name="form-name" value="department-application" />
 
       <Stack gap="md">
         {error && (
