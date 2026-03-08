@@ -60,7 +60,7 @@ export function HeaderNav() {
       <Drawer
         opened={opened}
         onClose={close}
-        title={<MalteseCross size={24} />}
+        title={<Link href="/"><MalteseCross size={24} /></Link>}
         hiddenFrom="xs"
         padding="md"
       >
