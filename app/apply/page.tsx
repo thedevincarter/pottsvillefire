@@ -1,4 +1,5 @@
 import { Container, Title, Text } from "@mantine/core";
+import { ApplyForm } from "./ApplyForm";
 
 export const metadata = {
   title: "Apply | Pottsville Fire",
@@ -7,9 +8,12 @@ export const metadata = {
 
 export default function ApplyPage() {
   return (
-    <Container py="xl">
-      <Title>Apply</Title>
-      <Text mt="md">Application content coming soon.</Text>
+    <Container size="xs" py="xl">
+      <Title mb="xs">Apply</Title>
+      <Text c="dimmed" mb="xl">
+        Fill out the form below and we&apos;ll be in touch.
+      </Text>
+      <ApplyForm />
     </Container>
   );
 }
