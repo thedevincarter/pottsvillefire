@@ -1,65 +1,75 @@
-import Image from "next/image";
+import { HeaderNav } from "./components/navigation/HeaderNav";
+import { HeroImageBackground } from "./components/images/hero/HeroImageBackground";
+import { Text, Container, Stack } from "@mantine/core";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <>
+      <HeaderNav />
+
+      <HeroImageBackground />
+
+      <Container py="lg">
+        <Stack gap="xl">
+          <Text>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent
+            libero erat, sagittis quis rutrum sed, posuere sed nibh. Curabitur
+            vulputate nisl eget urna tincidunt efficitur. Mauris laoreet tellus
+            lorem, sodales accumsan mi tincidunt quis. Aenean semper lectus
+            mollis, sollicitudin nibh viverra, tempor mi. Suspendisse potenti.
+            Sed accumsan ut lectus a dapibus. Curabitur sodales augue eget
+            feugiat feugiat. Ut vel finibus dui. Vestibulum sit amet elit ipsum.
+            Nam vestibulum tortor ac arcu elementum ultricies. Curabitur metus
+            nulla, rutrum eget metus sit amet, sollicitudin iaculis odio.
+          </Text>
+
+          <Text>
+            Morbi egestas erat mi, vel lobortis nunc maximus non. Nam non congue
+            leo, sit amet egestas augue. Duis vitae justo at turpis pellentesque
+            ultrices. Praesent urna odio, viverra ut felis nec, accumsan
+            eleifend velit. Pellentesque commodo tortor eu cursus ornare. Etiam
+            vehicula efficitur sem vel tristique. Pellentesque vestibulum neque
+            at elementum elementum.
+          </Text>
+
+          <Text>
+            Vestibulum blandit eu velit sit amet consequat. Proin ut ipsum et
+            dui rutrum sollicitudin. Fusce blandit faucibus ex, rhoncus
+            facilisis nulla venenatis sit amet. Etiam congue libero nisi, vitae
+            mattis eros congue ut. Integer a ligula elit. Proin justo metus,
+            pharetra vitae dolor ac, venenatis pulvinar nunc. Etiam scelerisque,
+            tellus eget placerat lacinia, nisl mauris commodo nunc, et ultricies
+            tortor sem in sapien. Vestibulum tristique ipsum urna, sed rhoncus
+            arcu fermentum ut. Integer semper mollis sagittis.
+          </Text>
+
+          <Text>
+            Praesent molestie dolor sed neque laoreet mollis. In non maximus
+            ligula. Maecenas dictum sit amet odio eget iaculis. Nullam justo
+            odio, pharetra ac magna at, pretium sodales arcu. Suspendisse
+            lobortis finibus lorem sed dictum. In ornare non massa eget
+            lobortis. Proin et congue dolor, ac rutrum nunc. Proin nisi ex,
+            cursus eu pretium sit amet, ultrices ut lectus. Morbi porttitor
+            tellus et lorem interdum, at venenatis odio vestibulum. Quisque
+            volutpat metus eu metus vehicula, pretium vulputate magna gravida.
+          </Text>
+
+          <Text>
+            Aliquam a tincidunt urna. Suspendisse malesuada ultrices tellus
+            vitae molestie. Aenean posuere felis sed sapien mattis, eget egestas
+            lectus vestibulum. Maecenas dignissim, velit sollicitudin ultrices
+            commodo, erat felis mattis ex, in euismod lectus nisi eu tortor.
+            Morbi ultrices egestas ligula id mattis. Mauris sollicitudin at
+            justo vitae sagittis. Sed posuere velit nibh, a tincidunt enim
+            rutrum in. Maecenas vel ipsum sed nibh tincidunt mattis eu quis
+            felis. Pellentesque varius felis purus, quis bibendum nisi pharetra
+            ac. Nulla mollis aliquam risus, et sollicitudin arcu maximus non.
+            Proin vitae eros laoreet, molestie felis a, luctus massa. Nunc
+            maximus vehicula vehicula. In euismod elit et dui cursus aliquet.
+            Cras porta convallis tellus finibus eleifend.
+          </Text>
+        </Stack>
+      </Container>
+    </>
   );
 }
