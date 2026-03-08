@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function ApplyPage() {
   return (
-    <Container size="xs" py="xl">
+    <Container size="md" py="xl">
       <Title mb="xs">Apply</Title>
       <Text c="dimmed" mb="xl">
         Fill out the form below and we&apos;ll be in touch.
