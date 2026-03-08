@@ -80,7 +80,7 @@ export function ApplyForm() {
           {...form.getInputProps("email")}
         />
 
-        <Button type="submit" mt="xs" disabled={!form.isDirty() || !form.isValid()}>
+        <Button type="submit" mt="xs" color="red.9" disabled={!form.isDirty() || !form.isValid()}>
           Submit application
         </Button>
       </Stack>

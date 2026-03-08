@@ -30,7 +30,7 @@
   }
 
   [data-mantine-color-scheme] &[data-active] {
-    background-color: var(--mantine-color-blue-filled);
+    background-color: var(--mantine-color-red-9);
     color: var(--mantine-color-white);
   }
 }

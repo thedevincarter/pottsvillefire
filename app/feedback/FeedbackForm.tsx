@@ -104,7 +104,7 @@ export function FeedbackForm() {
           {...form.getInputProps("message")}
         />
 
-        <Button type="submit" mt="xs" disabled={!form.isDirty() || !form.isValid()}>
+        <Button type="submit" mt="xs" color="red.9" disabled={!form.isDirty() || !form.isValid()}>
           Submit feedback
         </Button>
       </Stack>

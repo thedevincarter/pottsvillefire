@@ -5,13 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Burger, Container, Drawer, Group, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { MantineLogo } from "@mantinex/mantine-logo";
+import { MalteseCross } from "@/app/components/MalteseCross";
 import classes from "./HeaderNav.module.css";
 
 const links = [
   { link: "/apply", label: "Apply" },
   { link: "/feedback", label: "Feedback" },
   { link: "/run-log", label: "Run Log" },
+  { link: "/faq", label: "FAQ" },
+  { link: "/contact", label: "Contact" },
 ];
 
 export function HeaderNav() {
@@ -38,7 +40,7 @@ export function HeaderNav() {
       <header className={classes.header}>
         <Container className={classes.inner}>
           <Link href="/">
-            <MantineLogo size={28} />
+            <MalteseCross size={28} />
           </Link>
 
           <Group gap={5} visibleFrom="xs">
@@ -58,7 +60,7 @@ export function HeaderNav() {
       <Drawer
         opened={opened}
         onClose={close}
-        title={<MantineLogo size={24} />}
+        title={<MalteseCross size={24} />}
         hiddenFrom="xs"
         padding="md"
       >
