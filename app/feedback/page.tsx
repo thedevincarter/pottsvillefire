@@ -1,4 +1,5 @@
 import { Container, Title, Text } from "@mantine/core";
+import { FeedbackForm } from "./FeedbackForm";
 
 export const metadata = {
   title: "Feedback | Pottsville Fire",
@@ -7,9 +8,12 @@ export const metadata = {
 
 export default function FeedbackPage() {
   return (
-    <Container py="xl">
-      <Title>Feedback</Title>
-      <Text mt="md">Feedback form coming soon.</Text>
+    <Container size="xs" py="xl">
+      <Title mb="xs">Feedback</Title>
+      <Text c="dimmed" mb="xl">
+        We&apos;d love to hear from you.
+      </Text>
+      <FeedbackForm />
     </Container>
   );
 }
