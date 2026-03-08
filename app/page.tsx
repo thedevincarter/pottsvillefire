@@ -1,12 +1,9 @@
-import { HeaderNav } from "./components/navigation/HeaderNav";
 import { HeroImageBackground } from "./components/images/hero/HeroImageBackground";
 import { Text, Container, Stack } from "@mantine/core";
 
 export default function Home() {
   return (
     <>
-      <HeaderNav />
-
       <HeroImageBackground />
 
       <Container py="lg">

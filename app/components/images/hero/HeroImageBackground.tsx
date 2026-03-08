@@ -1,6 +1,7 @@
 "use client";
 
 import cx from "clsx";
+import Link from "next/link";
 import { Button, Container, Overlay, Text, Title } from "@mantine/core";
 import classes from "./HeroImageBackground.module.css";
 
@@ -22,11 +23,13 @@ export function HeroImageBackground() {
         </Container>
 
         <div className={classes.controls}>
-          <Button className={classes.control} variant="white" size="lg">
+          <Button component={Link} href="/apply" className={classes.control} variant="white" size="lg">
             Apply Now
           </Button>
 
           <Button
+            component={Link}
+            href="/run-log"
             className={cx(classes.control, classes.secondaryControl)}
             size="lg"
           >

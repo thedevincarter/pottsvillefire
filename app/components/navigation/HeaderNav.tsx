@@ -31,7 +31,7 @@ export function HeaderNav() {
   return (
     <header className={classes.header}>
       <Container className={classes.inner}>
-        <MantineLogo size={28} />
+        <Link href="/"><MantineLogo size={28} /></Link>
 
         <Group gap={5} visibleFrom="xs">
           {items}
