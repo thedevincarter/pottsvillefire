@@ -16,6 +16,7 @@ function formatDate(date: string) {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
+        timeZone: "America/Chicago",
       })
     : new Date(date).toLocaleDateString("en-US", {
         month: "short",
