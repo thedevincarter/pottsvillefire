@@ -1,6 +1,7 @@
 import { Container, Text, Title } from "@mantine/core";
 import { getRunLog, RunLogEntry } from "@/lib/notion";
-import { RunLogTabs } from "./RunLogTabs";
+import { RunLogView } from "./RunLogView";
+import { RunLogList } from "./RunLogList";
 
 export const dynamic = "force-dynamic";
 
@@ -13,60 +14,65 @@ function toMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function toMonthLabel(key: string, count: number) {
+function toMonthLabel(key: string) {
   const [year, month] = key.split("-").map(Number);
-  const name = new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long" });
-  return `${name} — ${count} ${count === 1 ? "call" : "calls"}`;
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
 }
 
-function groupByMonth(
-  runs: RunLogEntry[],
-  now: Date
-): { key: string; label: string; entries: RunLogEntry[] }[] {
-  const currentKey = toMonthKey(now);
-  const groups = new Map<string, RunLogEntry[]>();
+function getAvailableMonths(runs: RunLogEntry[], currentKey: string) {
+  const keys = Array.from(
+    new Set(
+      runs
+        .filter((r) => r.date)
+        .map((r) => toMonthKey(new Date(r.date!)))
+        .filter((k) => k <= currentKey)
+    )
+  ).sort().reverse();
 
-  for (const run of runs) {
-    if (!run.date) continue;
-
-    const runDate = new Date(run.date);
-    const key = toMonthKey(runDate);
-
-    // Skip future months
-    if (key > currentKey) continue;
-
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(run);
-  }
-
-  return Array.from(groups.entries()).map(([key, entries]) => ({
-    key,
-    label: toMonthLabel(key, entries.length),
-    entries,
-  }));
+  return keys.map((key) => ({ value: key, label: toMonthLabel(key) }));
 }
 
-export default async function RunLogPage() {
+export default async function RunLogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
   const runs = await getRunLog();
   const now = new Date();
   const currentKey = toMonthKey(now);
-  const groups = groupByMonth(runs, now);
+  const months = getAvailableMonths(runs, currentKey);
 
-  // Default to current month if it exists, otherwise the most recent month
-  const defaultTab =
-    groups.find((g) => g.key === currentKey)?.key ?? groups[0]?.key ?? "";
+  const allMonths = [{ value: "all", label: "Year to Date" }, ...months];
+
+  const { month } = await searchParams;
+  const validValues = allMonths.map((m) => m.value);
+  const selectedMonth = validValues.includes(month ?? "") ? month! : months[0]?.value ?? "all";
+
+  const entries =
+    selectedMonth === "all"
+      ? runs.filter((r) => r.date)
+      : runs.filter((r) => r.date && toMonthKey(new Date(r.date)) === selectedMonth);
 
   return (
-    <Container size="sm" py="xl">
+    <Container
+      size="sm"
+      pt="xl"
+      style={{ height: "calc(100vh - 56px)", display: "flex", flexDirection: "column" }}
+    >
       <Title mb="xs">Run Log</Title>
       <Text c="dimmed" mb="xl">
         2026 incident log for Pottsville Fire Department.
       </Text>
 
-      {groups.length === 0 ? (
+      {months.length === 0 ? (
         <Text c="dimmed">No runs recorded yet.</Text>
       ) : (
-        <RunLogTabs groups={groups} defaultTab={defaultTab} />
+        <RunLogView months={allMonths} value={selectedMonth} entries={entries}>
+          <RunLogList entries={entries} />
+        </RunLogView>
       )}
     </Container>
   );
