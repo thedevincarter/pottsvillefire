@@ -45,15 +45,20 @@ export function RunLogCharts({ entries }: { entries: RunLogEntry[] }) {
         <Text c="dimmed">No data for this month.</Text>
       ) : (
         <>
-          <DonutChart
-            data={data}
-            size={260}
-            thickness={44}
-            withLabelsLine
-            withLabels
-            tooltipDataSource="segment"
-            label={`${entries.length} call${entries.length !== 1 ? "s" : ""}`}
-          />
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <DonutChart
+              data={data}
+              size={260}
+              thickness={44}
+              withLabelsLine
+              withLabels
+              tooltipDataSource="segment"
+            />
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+              <Text fw={700} size="xl">{entries.length}</Text>
+              <Text size="xs" c="dimmed">{entries.length !== 1 ? "calls" : "call"}</Text>
+            </div>
+          </div>
 
           <Stack gap="xs" align="flex-start">
             {data.map((item) => (
