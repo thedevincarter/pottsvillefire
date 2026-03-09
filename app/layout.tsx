@@ -43,9 +43,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <MantineProvider>
-            <HeaderNav />
-            {children}
-          </MantineProvider>
+          <HeaderNav />
+          <main style={{ paddingTop: 56 }}>{children}</main>
+        </MantineProvider>
       </body>
     </html>
   );
