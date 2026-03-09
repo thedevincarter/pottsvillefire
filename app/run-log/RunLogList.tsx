@@ -13,8 +13,9 @@ function formatDate(date: string) {
         month: "short",
         day: "numeric",
         year: "numeric",
-        hour: "numeric",
+        hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
       })
     : new Date(date).toLocaleDateString("en-US", {
         month: "short",
