@@ -34,18 +34,25 @@ export function RunLogList({ entries }: { entries: RunLogEntry[] }) {
     <Stack gap="sm">
 {entries.map((run) => (
         <Card key={run.id} withBorder padding="md" radius="md">
-          <Group justify="space-between" wrap="nowrap">
-            <Stack gap={4}>
-              <Text fw={500}>{run.complaint ?? "Unknown complaint"}</Text>
-              <Text size="sm" c="dimmed">
+          <Group justify="space-between" wrap="nowrap" align="center">
+            <Stack gap={4} style={{ minWidth: 0 }}>
+              <Text fw={500} truncate>{run.complaint ?? "Unknown complaint"}</Text>
+              <Text size="sm" c="dimmed" truncate>
                 {run.date ? formatDate(run.date) : "No date"}
               </Text>
             </Stack>
-            {run.callType && (
-              <Badge color={callTypeColors[run.callType] ?? "gray"} variant="light" size="sm">
-                {run.callType}
-              </Badge>
-            )}
+            <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
+              {run.callType && (
+                <Badge color={callTypeColors[run.callType] ?? "gray"} variant="light" size="sm">
+                  {run.callType}
+                </Badge>
+              )}
+              {run.mutualAid && (
+                <Badge color="blue" variant="light" size="sm">
+                  Mutual Aid: {run.mutualAid}
+                </Badge>
+              )}
+            </Stack>
           </Group>
         </Card>
       ))}

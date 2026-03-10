@@ -11,6 +11,7 @@ export type RunLogEntry = {
   complaint: string | null;
   address: string | null;
   response: string | null;
+  mutualAid: string | null;
 };
 
 function selectName(prop: { type: string; select?: unknown } | undefined): string | null {
@@ -37,12 +38,13 @@ export async function getRunLog(): Promise<RunLogEntry[]> {
     const callType = selectName(props["Call Type"] as { type: string; select?: unknown });
     const complaint = selectName(props.Complaint as { type: string; select?: unknown });
     const response = selectName(props.Response as { type: string; select?: unknown });
+    const mutualAid = selectName(props["Mutual Aid"] as { type: string; select?: unknown });
 
     const address =
       props.Address?.type === "rich_text"
         ? props.Address.rich_text.map((t) => t.plain_text).join("") || null
         : null;
 
-    return { id: page.id, date, callType, complaint, address, response };
+    return { id: page.id, date, callType, complaint, address, response, mutualAid };
   });
 }
