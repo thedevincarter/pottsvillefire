@@ -28,9 +28,11 @@ function getAvailableMonths(runs: RunLogEntry[], currentKey: string) {
       runs
         .filter((r) => r.date)
         .map((r) => toMonthKey(new Date(r.date!)))
-        .filter((k) => k <= currentKey)
-    )
-  ).sort().reverse();
+        .filter((k) => k <= currentKey),
+    ),
+  )
+    .sort()
+    .reverse();
 
   return keys.map((key) => ({ value: key, label: toMonthLabel(key) }));
 }
@@ -49,24 +51,31 @@ export default async function RunLogPage({
 
   const { month } = await searchParams;
   const validValues = allMonths.map((m) => m.value);
-  const selectedMonth = validValues.includes(month ?? "") ? month! : months[0]?.value ?? "all";
+  const selectedMonth = validValues.includes(month ?? "")
+    ? month!
+    : (months[0]?.value ?? "all");
 
   const entries =
     selectedMonth === "all"
       ? runs.filter((r) => r.date)
-      : runs.filter((r) => r.date && toMonthKey(new Date(r.date)) === selectedMonth);
+      : runs.filter(
+          (r) => r.date && toMonthKey(new Date(r.date)) === selectedMonth,
+        );
 
   return (
     <Container
       size="sm"
       pt="xl"
-      style={{ height: "calc(100vh - 56px)", display: "flex", flexDirection: "column" }}
+      style={{
+        height: "calc(100vh - 56px)",
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
       <Title mb="xs">Run Log</Title>
       <Text c="dimmed" mb="xl">
         2026 incident log for Pottsville Fire Department.
       </Text>
-
       {months.length === 0 ? (
         <Text c="dimmed">No runs recorded yet.</Text>
       ) : (

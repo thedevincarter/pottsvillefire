@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Burger, Container, Drawer, Group, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { MalteseCross } from "@/app/components/MalteseCross";
+import { LoginButton } from "@/app/components/auth/LoginButton";
 import classes from "./HeaderNav.module.css";
 
 const links = [
@@ -45,6 +46,7 @@ export function HeaderNav() {
 
           <Group gap={5} visibleFrom="xs">
             {items}
+            <LoginButton />
           </Group>
 
           <Burger
@@ -64,7 +66,10 @@ export function HeaderNav() {
         hiddenFrom="xs"
         padding="md"
       >
-        <Stack gap="xs">{items}</Stack>
+        <Stack gap="xs">
+          {items}
+          <LoginButton />
+        </Stack>
       </Drawer>
     </>
   );

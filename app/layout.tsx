@@ -12,6 +12,7 @@ import {
   mantineHtmlProps,
 } from "@mantine/core";
 import { HeaderNav } from "./components/navigation/HeaderNav";
+import { AuthProvider } from "./components/auth/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,8 +44,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <MantineProvider>
-          <HeaderNav />
-          <main style={{ paddingTop: 56 }}>{children}</main>
+          <AuthProvider>
+            <HeaderNav />
+            <main style={{ paddingTop: 56 }}>{children}</main>
+          </AuthProvider>
         </MantineProvider>
       </body>
     </html>
