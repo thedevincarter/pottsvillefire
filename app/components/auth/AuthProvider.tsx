@@ -79,16 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Load the Netlify Identity widget via script tag
-    const script = document.createElement("script");
-    script.src = "https://identity.netlify.com/v1/netlify-identity-widget.js";
-    script.async = true;
-    script.onload = () => {
+    // The script is loaded via beforeInteractive in layout.tsx.
+    // Poll briefly in case hydration races the script load.
+    function setup() {
       const identity = getIdentity();
-      if (!identity) {
-        setLoading(false);
-        return;
-      }
+      if (!identity) return false;
 
       identity.on("init", (initUser?: User) => {
         if (initUser) setUser(initUser);
@@ -109,12 +104,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // confirmation tokens — it will automatically open the widget
       // when one of those tokens is present.
       identity.init();
-    };
-    document.head.appendChild(script);
+      return true;
+    }
 
-    return () => {
-      document.head.removeChild(script);
-    };
+    if (!setup()) {
+      const interval = setInterval(() => {
+        if (setup()) clearInterval(interval);
+      }, 50);
+      // Give up after 5s
+      const timeout = setTimeout(() => {
+        clearInterval(interval);
+        setLoading(false);
+      }, 5000);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
   }, []);
 
   const login = useCallback(() => {
