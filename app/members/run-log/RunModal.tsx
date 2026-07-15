@@ -1,49 +1,89 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Group, Modal, Stack, TextInput } from "@mantine/core";
-import type { RunLogEntry } from "@/lib/runs";
+import { Button, Group, Modal, Stack, TagsInput, TextInput } from "@mantine/core";
+import { DateTimePicker } from "@mantine/dates";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import { CreatableSelect } from "@/app/components/CreatableSelect";
+import type { RunLogEntry, RunFormOptions } from "@/lib/runs";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const TZ = "America/Chicago";
 
 type Props = {
   opened: boolean;
   onClose: () => void;
-  onSave: (data: Record<string, string>) => void | Promise<void>;
+  onSave: (data: Record<string, unknown>) => void | Promise<void>;
   title: string;
   initialData?: RunLogEntry;
+  options: RunFormOptions;
 };
 
-export function RunModal({ opened, onClose, onSave, title, initialData }: Props) {
+function toDateString(isoDate: string | null): string | null {
+  if (!isoDate) return null;
+  return dayjs.tz(isoDate, TZ).format("YYYY-MM-DD HH:mm:ss");
+}
+
+function toISOCentral(dateStr: string | null): string {
+  if (!dateStr) return "";
+  return dayjs.tz(dateStr, TZ).format("YYYY-MM-DDTHH:mm:ssZ");
+}
+
+export function RunModal({
+  opened,
+  onClose,
+  onSave,
+  title,
+  initialData,
+  options,
+}: Props) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(() => getDefaults(initialData));
+  const [date, setDate] = useState<string | null>(null);
+  const [address, setAddress] = useState("");
+  const [callType, setCallType] = useState<string | null>(null);
+  const [complaint, setComplaint] = useState<string | null>(null);
+  const [mutualAid, setMutualAid] = useState<string | null>(null);
+  const [respondingMembers, setRespondingMembers] = useState<string[]>([]);
 
   // Reset form when modal opens with new data
   const [lastId, setLastId] = useState<string | undefined>();
   if (opened && initialData?.id !== lastId) {
     setLastId(initialData?.id);
-    setForm(getDefaults(initialData));
+    setDate(toDateString(initialData?.date ?? null));
+    setAddress(initialData?.address ?? "");
+    setCallType(initialData?.callType ?? null);
+    setComplaint(initialData?.complaint ?? null);
+    setMutualAid(initialData?.mutualAid ?? null);
+    setRespondingMembers(initialData?.respondedMembers ?? []);
+  }
+  if (opened && !initialData && lastId !== undefined) {
+    setLastId(undefined);
+    setDate(null);
+    setAddress("");
+    setCallType(null);
+    setComplaint(null);
+    setMutualAid(null);
+    setRespondingMembers([]);
   }
   if (!opened && lastId !== undefined) {
     setLastId(undefined);
   }
 
-  function getDefaults(data?: RunLogEntry) {
-    return {
-      date: data?.date ?? "",
-      address: data?.address ?? "",
-      callType: data?.callType ?? "",
-      complaint: data?.complaint ?? "",
-      mutualAid: data?.mutualAid ?? "",
-    };
-  }
-
-  function handleChange(field: string, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
   async function handleSubmit() {
     setSaving(true);
     try {
-      await onSave(form);
+      await onSave({
+        date: toISOCentral(date),
+        address,
+        callType: callType ?? "",
+        complaint: complaint ?? "",
+        mutualAid: mutualAid ?? "",
+        respondingMembers,
+      });
       onClose();
     } finally {
       setSaving(false);
@@ -53,35 +93,51 @@ export function RunModal({ opened, onClose, onSave, title, initialData }: Props)
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
       <Stack gap="sm">
-        <TextInput
-          label="Date/Time"
-          placeholder="2026-07-15T14:30"
-          value={form.date}
-          onChange={(e) => handleChange("date", e.currentTarget.value)}
+        <DateTimePicker
+          label="Date / Time (Central)"
+          placeholder="Select date and time"
+          value={date}
+          onChange={setDate}
+          clearable
+          valueFormat="MM/DD/YYYY hh:mm A"
         />
         <TextInput
           label="Address"
           placeholder="123 Main St"
-          value={form.address}
-          onChange={(e) => handleChange("address", e.currentTarget.value)}
+          value={address}
+          onChange={(e) => setAddress(e.currentTarget.value)}
         />
-        <TextInput
+        <CreatableSelect
           label="Call Type"
-          placeholder="Fire, Medical, MVC"
-          value={form.callType}
-          onChange={(e) => handleChange("callType", e.currentTarget.value)}
+          placeholder="Select or type to create"
+          data={options.callTypes}
+          value={callType}
+          onChange={setCallType}
+          clearable
         />
-        <TextInput
+        <CreatableSelect
           label="Complaint"
-          placeholder="Structure fire, Chest pain, etc."
-          value={form.complaint}
-          onChange={(e) => handleChange("complaint", e.currentTarget.value)}
+          placeholder="Select or type to create"
+          data={options.complaints}
+          value={complaint}
+          onChange={setComplaint}
+          clearable
         />
-        <TextInput
+        <CreatableSelect
           label="Mutual Aid"
-          placeholder="Department name (if applicable)"
-          value={form.mutualAid}
-          onChange={(e) => handleChange("mutualAid", e.currentTarget.value)}
+          placeholder="Select or type to create"
+          data={options.mutualAidDepts}
+          value={mutualAid}
+          onChange={setMutualAid}
+          clearable
+        />
+        <TagsInput
+          label="Responding Members"
+          placeholder="Select or add members"
+          data={options.memberNames}
+          value={respondingMembers}
+          onChange={setRespondingMembers}
+          clearable
         />
         <Group justify="flex-end" mt="md">
           <Button variant="default" onClick={onClose}>

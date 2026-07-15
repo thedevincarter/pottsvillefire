@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
-import type { RunLogEntry } from "@/lib/runs";
+import type { RunLogEntry, RunFormOptions } from "@/lib/runs";
 import { RunModal } from "./RunModal";
 
 const callTypeColors: Record<string, string> = {
@@ -42,8 +42,10 @@ function formatDate(date: string) {
 
 export function MembersRunLogTable({
   initialRuns,
+  formOptions,
 }: {
   initialRuns: RunLogEntry[];
+  formOptions: RunFormOptions;
 }) {
   const { user, isAdmin, getToken } = useAuth();
   const router = useRouter();
@@ -78,7 +80,7 @@ export function MembersRunLogTable({
     }
   }
 
-  async function handleSave(data: Record<string, string>, id?: string) {
+  async function handleSave(data: Record<string, unknown>, id?: string) {
     const token = getToken();
     if (!token) return;
 
@@ -186,7 +188,7 @@ export function MembersRunLogTable({
                             onClick={() => handleRespond(run.id)}
                             aria-label="Toggle responded"
                           >
-                            {hasResponded ? "\u2713" : "\u2713"}
+                            {"\u2713"}
                           </ActionIcon>
                         </Tooltip>
                         {isAdmin && (
@@ -216,6 +218,7 @@ export function MembersRunLogTable({
         onClose={closeAdd}
         onSave={(data) => handleSave(data)}
         title="Add Run"
+        options={formOptions}
       />
 
       <RunModal
@@ -226,6 +229,7 @@ export function MembersRunLogTable({
         }}
         title="Edit Run"
         initialData={editRun ?? undefined}
+        options={formOptions}
       />
     </>
   );

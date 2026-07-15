@@ -16,7 +16,36 @@ export type RunLogInput = {
   complaint?: string;
   address?: string;
   mutualAid?: string;
+  respondingMembers?: string[];
 };
+
+export type RunFormOptions = {
+  callTypes: string[];
+  complaints: string[];
+  mutualAidDepts: string[];
+  memberNames: string[];
+};
+
+async function getDistinctValues(table: string, column: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from(table)
+    .select(column)
+    .not(column, "is", null)
+    .order(column);
+  if (error) throw error;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return [...new Set((data ?? []).map((r: any) => r[column] as string).filter(Boolean))];
+}
+
+export async function getRunFormOptions(): Promise<RunFormOptions> {
+  const [callTypes, complaints, mutualAidDepts, memberRows] = await Promise.all([
+    getDistinctValues("runs", "call_type"),
+    getDistinctValues("runs", "complaint"),
+    getDistinctValues("runs", "mutual_aid"),
+    getDistinctValues("run_responses", "member_name"),
+  ]);
+  return { callTypes, complaints, mutualAidDepts, memberNames: memberRows };
+}
 
 export async function getRunLog(): Promise<RunLogEntry[]> {
   const { data: runs, error } = await supabase
@@ -40,15 +69,23 @@ export async function getRunLog(): Promise<RunLogEntry[]> {
 }
 
 export async function createRun(data: RunLogInput) {
-  const { error } = await supabase.from("runs").insert({
-    date: data.date || null,
-    call_type: data.callType || null,
-    complaint: data.complaint || null,
-    address: data.address || null,
-    mutual_aid: data.mutualAid || null,
-  });
+  const { data: run, error } = await supabase
+    .from("runs")
+    .insert({
+      date: data.date || null,
+      call_type: data.callType || null,
+      complaint: data.complaint || null,
+      address: data.address || null,
+      mutual_aid: data.mutualAid || null,
+    })
+    .select("id")
+    .single();
 
   if (error) throw error;
+
+  if (data.respondingMembers?.length) {
+    await syncRespondingMembers(run.id, data.respondingMembers);
+  }
 }
 
 export async function updateRun(runId: string, data: RunLogInput) {
@@ -63,6 +100,39 @@ export async function updateRun(runId: string, data: RunLogInput) {
     })
     .eq("id", runId);
 
+  if (error) throw error;
+
+  if (data.respondingMembers !== undefined) {
+    await syncRespondingMembers(runId, data.respondingMembers);
+  }
+}
+
+async function syncRespondingMembers(runId: string, memberNames: string[]) {
+  // Remove all existing responses for this run
+  await supabase.from("run_responses").delete().eq("run_id", runId);
+
+  if (memberNames.length === 0) return;
+
+  // Look up existing emails for known members
+  const { data: known } = await supabase
+    .from("run_responses")
+    .select("member_name, member_email")
+    .in("member_name", memberNames);
+
+  const emailMap = new Map<string, string>();
+  for (const row of known ?? []) {
+    emailMap.set(row.member_name, row.member_email);
+  }
+
+  const rows = memberNames.map((name) => ({
+    run_id: runId,
+    member_name: name,
+    member_email:
+      emailMap.get(name) ??
+      name.toLowerCase().replace(/\s+/g, ".") + "@member",
+  }));
+
+  const { error } = await supabase.from("run_responses").insert(rows);
   if (error) throw error;
 }
 
