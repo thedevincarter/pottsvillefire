@@ -15,6 +15,16 @@ interface User {
     full_name?: string;
     avatar_url?: string;
   };
+  app_metadata?: {
+    roles?: string[];
+  };
+  token?: {
+    access_token: string;
+    expires_at: number;
+    expires_in: number;
+    refresh_token: string;
+    token_type: string;
+  };
 }
 
 interface NetlifyIdentityAPI {
@@ -29,17 +39,21 @@ interface NetlifyIdentityAPI {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isAdmin: boolean;
   login: () => void;
   signup: () => void;
   logout: () => void;
+  getToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  isAdmin: false,
   login: () => {},
   signup: () => {},
   logout: () => {},
+  getToken: () => null,
 });
 
 export function useAuth() {
@@ -113,8 +127,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getIdentity()?.logout();
   }, [ready]);
 
+  const getToken = useCallback(() => {
+    return user?.token?.access_token ?? null;
+  }, [user]);
+
+  const isAdmin = user?.app_metadata?.roles?.includes("admin") ?? false;
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, login, signup, logout, getToken }}>
       {children}
     </AuthContext.Provider>
   );

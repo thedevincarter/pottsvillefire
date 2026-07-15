@@ -7,9 +7,10 @@ import { Burger, Container, Drawer, Group, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { MalteseCross } from "@/app/components/MalteseCross";
 import { LoginButton } from "@/app/components/auth/LoginButton";
+import { useAuth } from "@/app/components/auth/AuthProvider";
 import classes from "./HeaderNav.module.css";
 
-const links = [
+const publicLinks = [
   { link: "/apply", label: "Apply" },
   { link: "/feedback", label: "Feedback" },
   { link: "/run-log", label: "Run Log" },
@@ -17,20 +18,29 @@ const links = [
   { link: "/contact", label: "Contact" },
 ];
 
+const memberLinks = [
+  { link: "/members/run-log", label: "Members" },
+];
+
 export function HeaderNav() {
   const [opened, { toggle, close }] = useDisclosure(false);
   const pathname = usePathname();
+  const { user } = useAuth();
 
   useEffect(() => {
     close();
   }, [pathname, close]);
+
+  const links = [...publicLinks, ...(user ? memberLinks : [])];
 
   const items = links.map((link) => (
     <Link
       key={link.label}
       href={link.link}
       className={classes.link}
-      data-active={pathname === link.link || undefined}
+      data-active={
+        pathname === link.link || pathname?.startsWith(link.link + "/") || undefined
+      }
     >
       {link.label}
     </Link>

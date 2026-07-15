@@ -12,6 +12,7 @@ export type RunLogEntry = {
   address: string | null;
   response: string | null;
   mutualAid: string | null;
+  respondedMembers: string[];
 };
 
 function selectName(prop: { type: string; select?: unknown } | undefined): string | null {
@@ -45,6 +46,85 @@ export async function getRunLog(): Promise<RunLogEntry[]> {
         ? props.Address.rich_text.map((t) => t.plain_text).join("") || null
         : null;
 
-    return { id: page.id, date, callType, complaint, address, response, mutualAid };
+    const respondedMembers =
+      props["Responded Members"]?.type === "multi_select"
+        ? (props["Responded Members"].multi_select as { name: string }[]).map((s) => s.name)
+        : [];
+
+    return { id: page.id, date, callType, complaint, address, response, mutualAid, respondedMembers };
+  });
+}
+
+export type RunLogInput = {
+  date?: string;
+  callType?: string;
+  complaint?: string;
+  address?: string;
+  response?: string;
+  mutualAid?: string;
+};
+
+function buildProperties(data: RunLogInput) {
+  const props: Record<string, unknown> = {};
+
+  if (data.date !== undefined) {
+    props.Date = { date: data.date ? { start: data.date } : null };
+  }
+  if (data.callType !== undefined) {
+    props["Call Type"] = { select: data.callType ? { name: data.callType } : null };
+  }
+  if (data.complaint !== undefined) {
+    props.Complaint = { select: data.complaint ? { name: data.complaint } : null };
+  }
+  if (data.address !== undefined) {
+    props.Address = {
+      rich_text: data.address ? [{ text: { content: data.address } }] : [],
+    };
+  }
+  if (data.response !== undefined) {
+    props.Response = { select: data.response ? { name: data.response } : null };
+  }
+  if (data.mutualAid !== undefined) {
+    props["Mutual Aid"] = { select: data.mutualAid ? { name: data.mutualAid } : null };
+  }
+
+  return props;
+}
+
+export async function createRun(data: RunLogInput) {
+  return notion.pages.create({
+    parent: { database_id: process.env.NOTION_RUN_LOG_DATABASE_ID! },
+    properties: buildProperties(data) as Parameters<typeof notion.pages.create>[0]["properties"],
+  });
+}
+
+export async function updateRun(pageId: string, data: RunLogInput) {
+  return notion.pages.update({
+    page_id: pageId,
+    properties: buildProperties(data) as Parameters<typeof notion.pages.update>[0]["properties"],
+  });
+}
+
+export async function toggleRespondedMember(pageId: string, memberName: string) {
+  const page = await notion.pages.retrieve({ page_id: pageId });
+  if (!("properties" in page)) throw new Error("Invalid page");
+
+  const prop = page.properties["Responded Members"];
+  const current =
+    prop?.type === "multi_select"
+      ? (prop.multi_select as { name: string }[]).map((s) => s.name)
+      : [];
+
+  const updated = current.includes(memberName)
+    ? current.filter((n) => n !== memberName)
+    : [...current, memberName];
+
+  return notion.pages.update({
+    page_id: pageId,
+    properties: {
+      "Responded Members": {
+        multi_select: updated.map((name) => ({ name })),
+      },
+    } as Parameters<typeof notion.pages.update>[0]["properties"],
   });
 }
