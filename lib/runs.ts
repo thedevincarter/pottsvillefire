@@ -141,6 +141,41 @@ export type MemberStats = {
   totalCalls: number;
 };
 
+export type MemberCallCounts = {
+  name: string;
+  total: number;
+  fire: number;
+  medical: number;
+  mvc: number;
+};
+
+export async function getAllMemberCallCounts(): Promise<MemberCallCounts[]> {
+  const { data, error } = await supabase
+    .from("run_responses")
+    .select("member_name, runs(call_type)")
+    .not("member_name", "is", null);
+
+  if (error) throw error;
+
+  const map = new Map<string, MemberCallCounts>();
+  for (const row of data ?? []) {
+    const name = row.member_name;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const callType = (row as any).runs?.call_type ?? null;
+    let entry = map.get(name);
+    if (!entry) {
+      entry = { name, total: 0, fire: 0, medical: 0, mvc: 0 };
+      map.set(name, entry);
+    }
+    entry.total++;
+    if (callType === "Fire") entry.fire++;
+    else if (callType === "Medical") entry.medical++;
+    else if (callType === "MVC") entry.mvc++;
+  }
+
+  return [...map.values()].sort((a, b) => b.total - a.total);
+}
+
 export async function getMemberStats(name: string): Promise<MemberStats | null> {
   const { count, error } = await supabase
     .from("run_responses")

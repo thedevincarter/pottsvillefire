@@ -3,7 +3,7 @@
 import { Button, Menu, Text } from "@mantine/core";
 import { useAuth } from "./AuthProvider";
 
-export function LoginButton() {
+export function LoginButton({ onAction, variant = "menu" }: { onAction?: () => void; variant?: "menu" | "simple" } = {}) {
   const { user, loading, login, logout } = useAuth();
 
   if (loading) {
@@ -11,6 +11,14 @@ export function LoginButton() {
   }
 
   if (user) {
+    if (variant === "simple") {
+      return (
+        <Button variant="subtle" color="gray" size="compact-sm" onClick={() => { onAction?.(); logout(); }}>
+          Log out
+        </Button>
+      );
+    }
+
     return (
       <Menu shadow="md" width={200}>
         <Menu.Target>
@@ -29,7 +37,7 @@ export function LoginButton() {
   }
 
   return (
-    <Button variant="subtle" color="gray" size="compact-sm" onClick={login}>
+    <Button variant="filled" color="red" size="compact-sm" onClick={() => { onAction?.(); login(); }}>
       Log in
     </Button>
   );

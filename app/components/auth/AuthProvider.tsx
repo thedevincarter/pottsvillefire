@@ -86,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const identity = getIdentity();
       if (!identity) return false;
 
+      identity.init({ APIUrl: "https://pottsvillefire.netlify.app/.netlify/identity" });
       const currentUser = identity.currentUser();
       if (currentUser) setUser(currentUser);
       setReady(true);

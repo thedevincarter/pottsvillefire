@@ -52,7 +52,7 @@ export default function RootLayout({
                     });
                   }
                 });
-                window.netlifyIdentity.init();
+                window.netlifyIdentity.init({ APIUrl: "https://pottsvillefire.netlify.app/.netlify/identity" });
               }
             `,
           }}

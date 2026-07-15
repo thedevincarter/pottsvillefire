@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Burger, Container, Drawer, Group, Stack } from "@mantine/core";
+import { Burger, Container, Drawer, Group, Menu, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { MalteseCross } from "@/app/components/MalteseCross";
 import { LoginButton } from "@/app/components/auth/LoginButton";
@@ -18,22 +18,28 @@ const publicLinks = [
   { link: "/contact", label: "Contact" },
 ];
 
-const memberLinks = [
-  { link: "/members/run-log", label: "Members" },
+const memberSubLinks = [
+  { link: "/members/run-log", label: "Run Log" },
+  { link: "/members/apparatus-checks", label: "Apparatus Checks" },
+  { link: "/members/roster", label: "Roster" },
+];
+
+const adminSubLinks: { link: string; label: string }[] = [
 ];
 
 export function HeaderNav() {
   const [opened, { toggle, close }] = useDisclosure(false);
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   useEffect(() => {
     close();
   }, [pathname, close]);
 
-  const links = [...publicLinks, ...(user ? memberLinks : [])];
+  const membersSubItems = [...memberSubLinks, ...(isAdmin ? adminSubLinks : [])];
+  const isMembersActive = pathname?.startsWith("/members") || false;
 
-  const items = links.map((link) => (
+  const publicItems = publicLinks.map((link) => (
     <Link
       key={link.label}
       href={link.link}
@@ -55,7 +61,27 @@ export function HeaderNav() {
           </Link>
 
           <Group gap={5} visibleFrom="xs">
-            {items}
+            {publicItems}
+            {user && (
+              <Menu shadow="md" width={160} trigger="hover" openDelay={50} closeDelay={100}>
+                <Menu.Target>
+                  <span
+                    className={classes.link}
+                    data-active={isMembersActive || undefined}
+                    style={{ cursor: "pointer" }}
+                  >
+                    Members
+                  </span>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  {membersSubItems.map((sub) => (
+                    <Menu.Item key={sub.link} component={Link} href={sub.link}>
+                      {sub.label}
+                    </Menu.Item>
+                  ))}
+                </Menu.Dropdown>
+              </Menu>
+            )}
             <LoginButton />
           </Group>
 
@@ -72,13 +98,31 @@ export function HeaderNav() {
       <Drawer
         opened={opened}
         onClose={close}
-        title={<Link href="/"><MalteseCross size={24} /></Link>}
+        title={<Link href="/" onClick={close}><MalteseCross size={24} /></Link>}
         hiddenFrom="xs"
         padding="md"
       >
-        <Stack gap="xs">
-          {items}
-          <LoginButton />
+        <Stack gap="xs" onClick={close}>
+          {publicItems}
+          {user && (
+            <>
+              <Text size="sm" fw={700} c="dimmed" mt="xs">
+                Members
+              </Text>
+              {membersSubItems.map((sub) => (
+                <Link
+                  key={sub.link}
+                  href={sub.link}
+                  className={classes.link}
+                  data-active={pathname === sub.link || undefined}
+                  style={{ paddingLeft: 24 }}
+                >
+                  {sub.label}
+                </Link>
+              ))}
+            </>
+          )}
+          <LoginButton onAction={close} variant="simple" />
         </Stack>
       </Drawer>
     </>
