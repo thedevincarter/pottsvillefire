@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ActionIcon,
+  Anchor,
   Badge,
   Button,
   Group,
+  Stack,
   Table,
   Text,
   Tooltip,
@@ -155,16 +158,18 @@ export function MembersRunLogTable({
                     <Table.Td>{run.mutualAid ?? "-"}</Table.Td>
                     <Table.Td>
                       {run.respondedMembers.length > 0 ? (
-                        <Tooltip
-                          label={run.respondedMembers.join(", ")}
-                          multiline
-                          w={220}
-                        >
-                          <Badge variant="light" size="sm">
-                            {run.respondedMembers.length} member
-                            {run.respondedMembers.length !== 1 ? "s" : ""}
-                          </Badge>
-                        </Tooltip>
+                        <Stack gap={2}>
+                          {run.respondedMembers.map((name) => (
+                            <Anchor
+                              key={name}
+                              component={Link}
+                              href={`/members/profile/${encodeURIComponent(name)}`}
+                              size="sm"
+                            >
+                              {name}
+                            </Anchor>
+                          ))}
+                        </Stack>
                       ) : (
                         <Text size="sm" c="dimmed">
                           -

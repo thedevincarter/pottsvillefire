@@ -136,6 +136,23 @@ async function syncRespondingMembers(runId: string, memberNames: string[]) {
   if (error) throw error;
 }
 
+export type MemberStats = {
+  name: string;
+  totalCalls: number;
+};
+
+export async function getMemberStats(name: string): Promise<MemberStats | null> {
+  const { count, error } = await supabase
+    .from("run_responses")
+    .select("id", { count: "exact", head: true })
+    .eq("member_name", name);
+
+  if (error) throw error;
+  if (count === null || count === 0) return null;
+
+  return { name, totalCalls: count };
+}
+
 export async function toggleRespondedMember(
   runId: string,
   memberName: string,
