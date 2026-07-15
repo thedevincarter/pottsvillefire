@@ -39,27 +39,6 @@ export default function RootLayout({
     <html lang="en" {...mantineHtmlProps}>
       <head>
         <ColorSchemeScript />
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (window.netlifyIdentity) {
-                window.netlifyIdentity.on("init", function(user) {
-                  if (!user) {
-                    window.netlifyIdentity.on("login", function() {
-                      document.location.href = "/members/run-log";
-                    });
-                  }
-                });
-                var apiUrl = window.location.hostname === "localhost" || window.location.hostname.match(/^(\d+\.){3}\d+$/)
-                  ? "https://pottsvillefire.netlify.app/.netlify/identity"
-                  : undefined;
-                window.netlifyIdentity.init(apiUrl ? { APIUrl: apiUrl } : undefined);
-              }
-            `,
-          }}
-        />
       </head>
 
       <body

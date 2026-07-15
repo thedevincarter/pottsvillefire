@@ -3,7 +3,7 @@ import { getTokenUser, isAdmin } from "@/lib/auth";
 import { createCheckItem, updateCheckItem } from "@/lib/apparatus";
 
 export async function POST(request: NextRequest) {
-  const user = getTokenUser(request);
+  const user = await getTokenUser(request);
   if (!user || !isAdmin(user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const user = getTokenUser(request);
+  const user = await getTokenUser(request);
   if (!user || !isAdmin(user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

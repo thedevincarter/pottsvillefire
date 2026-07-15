@@ -7,142 +7,112 @@ import {
   useState,
   useCallback,
 } from "react";
+import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 
-interface User {
+export type Profile = {
   id: string;
   email: string;
-  user_metadata: {
-    full_name?: string;
-    avatar_url?: string;
-  };
-  app_metadata?: {
-    roles?: string[];
-  };
-  token?: {
-    access_token: string;
-    expires_at: number;
-    expires_in: number;
-    refresh_token: string;
-    token_type: string;
-  };
-}
-
-interface NetlifyIdentityAPI {
-  init: (opts?: { APIUrl?: string }) => void;
-  open: (tab?: "login" | "signup") => void;
-  close: () => void;
-  logout: () => Promise<void>;
-  currentUser: () => User | null;
-  on: (event: string, callback: (user?: User) => void) => void;
-}
+  fullName: string;
+  role: string;
+  phone: string | null;
+};
 
 interface AuthContextType {
   user: User | null;
+  profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
-  login: () => void;
-  signup: () => void;
-  logout: () => void;
-  getToken: () => string | null;
+  login: (email: string, password: string) => Promise<string | null>;
+  logout: () => Promise<void>;
+  getToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  profile: null,
   loading: true,
   isAdmin: false,
-  login: () => {},
-  signup: () => {},
-  logout: () => {},
-  getToken: () => null,
+  login: async () => null,
+  logout: async () => {},
+  getToken: async () => null,
 });
 
 export function useAuth() {
   return useContext(AuthContext);
 }
 
-declare global {
-  interface Window {
-    netlifyIdentity?: NetlifyIdentityAPI;
-  }
-}
+async function fetchProfile(userId: string): Promise<Profile | null> {
+  const { data, error } = await supabaseBrowser
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
 
-function getIdentity(): NetlifyIdentityAPI | null {
-  if (typeof window !== "undefined" && window.netlifyIdentity) {
-    return window.netlifyIdentity;
-  }
-  return null;
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    email: data.email,
+    fullName: data.full_name,
+    role: data.role,
+    phone: data.phone,
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [ready, setReady] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    // The widget script and init() are called synchronously in
-    // layout.tsx <head>, so it should already be available.
-    // We just attach React-side listeners and read current user.
-    function setup() {
-      const identity = getIdentity();
-      if (!identity) return false;
-
-      const isLocal = window.location.hostname === "localhost" || /^(\d+\.){3}\d+$/.test(window.location.hostname);
-      if (isLocal) {
-        identity.init({ APIUrl: "https://pottsvillefire.netlify.app/.netlify/identity" });
+    // Get initial session
+    supabaseBrowser.auth.getSession().then(async ({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const p = await fetchProfile(session.user.id);
+        setProfile(p);
       }
-      const currentUser = identity.currentUser();
-      if (currentUser) setUser(currentUser);
-      setReady(true);
       setLoading(false);
+    });
 
-      identity.on("login", (loggedInUser?: User) => {
-        if (loggedInUser) setUser(loggedInUser);
-        identity.close();
-      });
+    // Listen for auth changes
+    const { data: { subscription } } = supabaseBrowser.auth.onAuthStateChange(
+      async (_event, session) => {
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          const p = await fetchProfile(session.user.id);
+          setProfile(p);
+        } else {
+          setProfile(null);
+        }
+      }
+    );
 
-      identity.on("logout", () => {
-        setUser(null);
-      });
-
-      return true;
-    }
-
-    if (!setup()) {
-      // Widget script may still be loading on slow connections
-      const interval = setInterval(() => {
-        if (setup()) clearInterval(interval);
-      }, 50);
-      const timeout = setTimeout(() => {
-        clearInterval(interval);
-        setLoading(false);
-      }, 5000);
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    }
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = useCallback(() => {
-    getIdentity()?.open("login");
-  }, [ready]);
+  const login = useCallback(async (email: string, password: string): Promise<string | null> => {
+    const { error } = await supabaseBrowser.auth.signInWithPassword({ email, password });
+    if (error) return error.message;
+    return null;
+  }, []);
 
-  const signup = useCallback(() => {
-    getIdentity()?.open("signup");
-  }, [ready]);
+  const logout = useCallback(async () => {
+    await supabaseBrowser.auth.signOut();
+    router.push("/");
+  }, [router]);
 
-  const logout = useCallback(() => {
-    getIdentity()?.logout();
-  }, [ready]);
+  const getToken = useCallback(async (): Promise<string | null> => {
+    const { data: { session } } = await supabaseBrowser.auth.getSession();
+    return session?.access_token ?? null;
+  }, []);
 
-  const getToken = useCallback(() => {
-    return user?.token?.access_token ?? null;
-  }, [user]);
-
-  const isAdmin = user?.app_metadata?.roles?.includes("admin") ?? false;
+  const isAdmin = profile?.role === "admin";
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, login, signup, logout, getToken }}>
+    <AuthContext.Provider value={{ user, profile, loading, isAdmin, login, logout, getToken }}>
       {children}
     </AuthContext.Provider>
   );

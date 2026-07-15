@@ -47,7 +47,7 @@ function ApparatusCheckItems({
 }: {
   apparatus: Apparatus;
   checkItems: CheckItem[];
-  getToken: () => string | null;
+  getToken: () => Promise<string | null>;
   onUpdate: () => void;
 }) {
   const [newLabel, setNewLabel] = useState("");
@@ -56,7 +56,7 @@ function ApparatusCheckItems({
   const items = checkItems.filter((c) => c.apparatusId === apparatus.id);
 
   async function addItem() {
-    const token = getToken();
+    const token = await getToken();
     if (!token || !newLabel.trim()) return;
     setSaving(true);
     await fetch("/api/admin/check-items", {
@@ -70,7 +70,7 @@ function ApparatusCheckItems({
   }
 
   async function toggleItem(c: CheckItem) {
-    const token = getToken();
+    const token = await getToken();
     if (!token) return;
     await fetch("/api/admin/check-items", {
       method: "PATCH",
@@ -117,7 +117,7 @@ function AdminSettings({
 }: {
   allApparatus: Apparatus[];
   allCheckItems: CheckItem[];
-  getToken: () => string | null;
+  getToken: () => Promise<string | null>;
   onUpdate: () => void;
 }) {
   const [apparatusName, setApparatusName] = useState("");
@@ -125,7 +125,7 @@ function AdminSettings({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function addApparatus() {
-    const token = getToken();
+    const token = await getToken();
     if (!token || !apparatusName.trim()) return;
     setSaving(true);
     await fetch("/api/admin/apparatus", {
@@ -139,7 +139,7 @@ function AdminSettings({
   }
 
   async function toggleApparatus(a: Apparatus) {
-    const token = getToken();
+    const token = await getToken();
     if (!token) return;
     await fetch("/api/admin/apparatus", {
       method: "PATCH",
@@ -213,7 +213,7 @@ export function ApparatusChecksList({
   allApparatus: Apparatus[];
   allCheckItems: CheckItem[];
 }) {
-  const { user, isAdmin, getToken } = useAuth();
+  const { user, profile, isAdmin, getToken } = useAuth();
   const router = useRouter();
   const [startingId, setStartingId] = useState<string | null>(null);
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
@@ -221,10 +221,10 @@ export function ApparatusChecksList({
   const [historyApparatus, setHistoryApparatus] = useState("all");
   const [search, setSearch] = useState("");
 
-  const memberName = user?.user_metadata?.full_name || user?.email || "";
+  const memberName = profile?.fullName || user?.email || "";
 
   async function handleStartCheck(apparatusId: string) {
-    const token = getToken();
+    const token = await getToken();
     if (!token) return;
 
     setStartingId(apparatusId);

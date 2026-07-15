@@ -53,7 +53,7 @@ export function MembersRunLogTable({
   initialRuns: RunLogEntry[];
   formOptions: RunFormOptions;
 }) {
-  const { user, isAdmin, getToken } = useAuth();
+  const { user, profile, isAdmin, getToken } = useAuth();
   const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editRun, setEditRun] = useState<RunLogEntry | null>(null);
@@ -61,8 +61,7 @@ export function MembersRunLogTable({
 
   const [selectedMonth, setSelectedMonth] = useState("all");
 
-  const memberName =
-    user?.user_metadata?.full_name || user?.email || "";
+  const memberName = profile?.fullName || user?.email || "";
 
   // Build month options from run dates
   const monthOptions = (() => {
@@ -101,7 +100,7 @@ export function MembersRunLogTable({
         });
 
   async function handleRespond(runId: string) {
-    const token = getToken();
+    const token = await getToken();
     if (!token) return;
 
     setRespondingIds((prev) => new Set(prev).add(runId));
@@ -125,7 +124,7 @@ export function MembersRunLogTable({
   }
 
   async function handleSave(data: Record<string, unknown>, id?: string) {
-    const token = getToken();
+    const token = await getToken();
     if (!token) return;
 
     const url = id ? `/api/runs/${id}` : "/api/runs";

@@ -24,7 +24,8 @@ const memberSubLinks = [
   { link: "/members/roster", label: "Roster" },
 ];
 
-const adminSubLinks: { link: string; label: string }[] = [
+const adminSubLinks = [
+  { link: "/members/users", label: "Manage Users" },
 ];
 
 export function HeaderNav() {

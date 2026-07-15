@@ -6,14 +6,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = getTokenUser(request);
+  const user = await getTokenUser(request);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
-  const memberName = body.memberName || user.full_name || user.email;
+  const memberName = body.memberName || user.email;
   try {
     await toggleRespondedMember(id, memberName, user.email);
     return NextResponse.json({ ok: true });

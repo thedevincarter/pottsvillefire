@@ -38,7 +38,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
 
   async function handleToggle(index: number) {
     const result = results[index];
-    const token = getToken();
+    const token = await getToken();
     if (!token || isCompleted) return;
 
     const newChecked = !result.checked;
@@ -69,7 +69,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
 
   async function handleSaveNotes(index: number) {
     const result = results[index];
-    const token = getToken();
+    const token = await getToken();
     if (!token || isCompleted) return;
 
     setSavingIds((prev) => new Set(prev).add(result.id));
@@ -94,7 +94,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
   }
 
   async function handleComplete() {
-    const token = getToken();
+    const token = await getToken();
     if (!token) return;
 
     setCompleting(true);
@@ -113,7 +113,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
 
   async function handleCancel() {
     if (!confirm("Cancel this check? All progress will be lost.")) return;
-    const token = getToken();
+    const token = await getToken();
     if (!token) return;
 
     setCancelling(true);

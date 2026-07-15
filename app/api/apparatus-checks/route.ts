@@ -3,7 +3,7 @@ import { getTokenUser } from "@/lib/auth";
 import { startCheck } from "@/lib/apparatus";
 
 export async function POST(request: NextRequest) {
-  const user = getTokenUser(request);
+  const user = await getTokenUser(request);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

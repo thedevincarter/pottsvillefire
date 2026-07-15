@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import { Container, Title, Text, Button, Stack } from "@mantine/core";
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, login } = useAuth();
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
   if (loading) {
     return null;
@@ -16,7 +18,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         <Stack align="center" gap="md">
           <Title order={2}>Authentication Required</Title>
           <Text c="dimmed">You must be logged in to view this page.</Text>
-          <Button onClick={login} color="red">Log in</Button>
+          <Button onClick={() => router.push("/login")} color="red">Log in</Button>
         </Stack>
       </Container>
     );

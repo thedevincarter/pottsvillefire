@@ -3,7 +3,7 @@ import { getTokenUser, isAdmin } from "@/lib/auth";
 import { createRun, type RunLogInput } from "@/lib/runs";
 
 export async function POST(request: NextRequest) {
-  const user = getTokenUser(request);
+  const user = await getTokenUser(request);
   if (!user || !isAdmin(user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
