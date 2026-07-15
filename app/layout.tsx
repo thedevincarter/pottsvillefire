@@ -52,7 +52,10 @@ export default function RootLayout({
                     });
                   }
                 });
-                window.netlifyIdentity.init({ APIUrl: "https://pottsvillefire.netlify.app/.netlify/identity" });
+                var apiUrl = window.location.hostname === "localhost" || window.location.hostname.match(/^(\d+\.){3}\d+$/)
+                  ? "https://pottsvillefire.netlify.app/.netlify/identity"
+                  : undefined;
+                window.netlifyIdentity.init(apiUrl ? { APIUrl: apiUrl } : undefined);
               }
             `,
           }}
