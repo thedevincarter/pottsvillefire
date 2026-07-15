@@ -47,8 +47,8 @@ export async function getRunLog(): Promise<RunLogEntry[]> {
         : null;
 
     const respondedMembers =
-      props["Responded Members"]?.type === "multi_select"
-        ? (props["Responded Members"].multi_select as { name: string }[]).map((s) => s.name)
+      props["Responding Members"]?.type === "multi_select"
+        ? (props["Responding Members"].multi_select as { name: string }[]).map((s) => s.name)
         : [];
 
     return { id: page.id, date, callType, complaint, address, response, mutualAid, respondedMembers };
@@ -109,7 +109,7 @@ export async function toggleRespondedMember(pageId: string, memberName: string) 
   const page = await notion.pages.retrieve({ page_id: pageId });
   if (!("properties" in page)) throw new Error("Invalid page");
 
-  const prop = page.properties["Responded Members"];
+  const prop = page.properties["Responding Members"];
   const current =
     prop?.type === "multi_select"
       ? (prop.multi_select as { name: string }[]).map((s) => s.name)
@@ -122,7 +122,7 @@ export async function toggleRespondedMember(pageId: string, memberName: string) 
   return notion.pages.update({
     page_id: pageId,
     properties: {
-      "Responded Members": {
+      "Responding Members": {
         multi_select: updated.map((name) => ({ name })),
       },
     } as Parameters<typeof notion.pages.update>[0]["properties"],

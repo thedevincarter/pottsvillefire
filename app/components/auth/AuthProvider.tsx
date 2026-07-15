@@ -90,14 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      identity.init();
-      setReady(true);
-
-      const currentUser = identity.currentUser();
-      if (currentUser) {
-        setUser(currentUser);
-      }
-      setLoading(false);
+      identity.on("init", (initUser?: User) => {
+        if (initUser) setUser(initUser);
+        setReady(true);
+        setLoading(false);
+      });
 
       identity.on("login", (loggedInUser?: User) => {
         if (loggedInUser) setUser(loggedInUser);
@@ -107,6 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       identity.on("logout", () => {
         setUser(null);
       });
+
+      // init() reads the URL hash to handle invite, recovery, and
+      // confirmation tokens — it will automatically open the widget
+      // when one of those tokens is present.
+      identity.init();
     };
     document.head.appendChild(script);
 
