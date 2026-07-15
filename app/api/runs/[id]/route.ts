@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenUser, isAdmin } from "@/lib/auth";
-import { updateRun, type RunLogInput } from "@/lib/notion";
+import { updateRun, type RunLogInput } from "@/lib/runs";
 
 export async function PATCH(
   request: NextRequest,

@@ -1,5 +1,5 @@
 import { Badge, Card, Group, Stack, Text } from "@mantine/core";
-import { RunLogEntry } from "@/lib/notion";
+import { RunLogEntry } from "@/lib/runs";
 
 const callTypeColors: Record<string, string> = {
   Fire: "red",

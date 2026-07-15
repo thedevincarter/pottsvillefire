@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, Group, Modal, Stack, TextInput } from "@mantine/core";
-import type { RunLogEntry } from "@/lib/notion";
+import type { RunLogEntry } from "@/lib/runs";
 
 type Props = {
   opened: boolean;
@@ -32,7 +32,6 @@ export function RunModal({ opened, onClose, onSave, title, initialData }: Props)
       address: data?.address ?? "",
       callType: data?.callType ?? "",
       complaint: data?.complaint ?? "",
-      response: data?.response ?? "",
       mutualAid: data?.mutualAid ?? "",
     };
   }
@@ -77,12 +76,6 @@ export function RunModal({ opened, onClose, onSave, title, initialData }: Props)
           placeholder="Structure fire, Chest pain, etc."
           value={form.complaint}
           onChange={(e) => handleChange("complaint", e.currentTarget.value)}
-        />
-        <TextInput
-          label="Response"
-          placeholder="Response type"
-          value={form.response}
-          onChange={(e) => handleChange("response", e.currentTarget.value)}
         />
         <TextInput
           label="Mutual Aid"

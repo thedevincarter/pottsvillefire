@@ -13,7 +13,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
-import type { RunLogEntry } from "@/lib/notion";
+import type { RunLogEntry } from "@/lib/runs";
 import { RunModal } from "./RunModal";
 
 const callTypeColors: Record<string, string> = {
@@ -62,7 +62,11 @@ export function MembersRunLogTable({
     try {
       await fetch(`/api/runs/${runId}/respond`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ memberName }),
       });
       router.refresh();
     } finally {
@@ -109,16 +113,15 @@ export function MembersRunLogTable({
               <Table.Th>Address</Table.Th>
               <Table.Th>Type</Table.Th>
               <Table.Th>Complaint</Table.Th>
-              <Table.Th>Response</Table.Th>
               <Table.Th>Mutual Aid</Table.Th>
-              <Table.Th>Responded</Table.Th>
+              <Table.Th>Responding Members</Table.Th>
               <Table.Th>Actions</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
             {initialRuns.length === 0 ? (
               <Table.Tr>
-                <Table.Td colSpan={8}>
+                <Table.Td colSpan={7}>
                   <Text c="dimmed" ta="center" py="md">
                     No runs recorded yet.
                   </Text>
@@ -147,7 +150,6 @@ export function MembersRunLogTable({
                       )}
                     </Table.Td>
                     <Table.Td>{run.complaint ?? "-"}</Table.Td>
-                    <Table.Td>{run.response ?? "-"}</Table.Td>
                     <Table.Td>{run.mutualAid ?? "-"}</Table.Td>
                     <Table.Td>
                       {run.respondedMembers.length > 0 ? (

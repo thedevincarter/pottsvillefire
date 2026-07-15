@@ -4,7 +4,7 @@ import "@mantine/charts/styles.css";
 import { BarChart } from "@mantine/charts";
 import { Select, Stack, Title } from "@mantine/core";
 import { useState } from "react";
-import { RunLogEntry } from "@/lib/notion";
+import { RunLogEntry } from "@/lib/runs";
 
 function toMonthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;

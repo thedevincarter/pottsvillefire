@@ -4,7 +4,7 @@ import "@mantine/charts/styles.css";
 import { DonutChart } from "@mantine/charts";
 import { ColorSwatch, Group, SegmentedControl, Stack, Text } from "@mantine/core";
 import { useState } from "react";
-import { RunLogEntry } from "@/lib/notion";
+import { RunLogEntry } from "@/lib/runs";
 
 const COLORS = [
   "red.9", "red.6", "red.3",

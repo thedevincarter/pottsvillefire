@@ -1,5 +1,5 @@
 import { Container, Text, Title } from "@mantine/core";
-import { getRunLog, RunLogEntry } from "@/lib/notion";
+import { getRunLog, RunLogEntry } from "@/lib/runs";
 import { RunLogView } from "./RunLogView";
 import { RunLogList } from "./RunLogList";
 

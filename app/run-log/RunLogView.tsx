@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Group, Select, Skeleton, Stack, Tabs, Text } from "@mantine/core";
-import { RunLogEntry } from "@/lib/notion";
+import { RunLogEntry } from "@/lib/runs";
 import { RunLogCharts } from "./RunLogCharts";
 
 type Props = {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenUser } from "@/lib/auth";
-import { toggleRespondedMember } from "@/lib/notion";
+import { toggleRespondedMember } from "@/lib/runs";
 
 export async function POST(
   request: NextRequest,
@@ -12,7 +12,16 @@ export async function POST(
   }
 
   const { id } = await params;
-  const memberName = user.full_name || user.email;
-  await toggleRespondedMember(id, memberName);
-  return NextResponse.json({ ok: true });
+  const body = await request.json().catch(() => ({}));
+  const memberName = body.memberName || user.full_name || user.email;
+  try {
+    await toggleRespondedMember(id, memberName, user.email);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to toggle responded member:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
 }

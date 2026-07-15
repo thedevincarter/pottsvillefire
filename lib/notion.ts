@@ -25,12 +25,20 @@ function selectName(prop: { type: string; select?: unknown } | undefined): strin
 }
 
 export async function getRunLog(): Promise<RunLogEntry[]> {
-  const response = await notion.dataSources.query({
-    data_source_id: process.env.NOTION_RUN_LOG_DATABASE_ID!,
-    sorts: [{ property: "Date", direction: "descending" }],
-  });
+  const allResults: Awaited<ReturnType<typeof notion.dataSources.query>>["results"] = [];
+  let cursor: string | undefined;
 
-  return response.results.filter(isFullPageOrDataSource).map((page) => {
+  do {
+    const response = await notion.dataSources.query({
+      data_source_id: process.env.NOTION_RUN_LOG_DATABASE_ID!,
+      sorts: [{ property: "Date", direction: "descending" }],
+      start_cursor: cursor,
+    });
+    allResults.push(...response.results);
+    cursor = response.has_more ? response.next_cursor ?? undefined : undefined;
+  } while (cursor);
+
+  return allResults.filter(isFullPageOrDataSource).map((page) => {
     const props = page.properties;
 
     const date =
@@ -105,19 +113,14 @@ export async function updateRun(pageId: string, data: RunLogInput) {
   });
 }
 
-export async function toggleRespondedMember(pageId: string, memberName: string) {
-  const page = await notion.pages.retrieve({ page_id: pageId });
-  if (!("properties" in page)) throw new Error("Invalid page");
-
-  const prop = page.properties["Responding Members"];
-  const current =
-    prop?.type === "multi_select"
-      ? (prop.multi_select as { name: string }[]).map((s) => s.name)
-      : [];
-
-  const updated = current.includes(memberName)
-    ? current.filter((n) => n !== memberName)
-    : [...current, memberName];
+export async function toggleRespondedMember(
+  pageId: string,
+  memberName: string,
+  currentMembers: string[]
+) {
+  const updated = currentMembers.includes(memberName)
+    ? currentMembers.filter((n) => n !== memberName)
+    : [...currentMembers, memberName];
 
   return notion.pages.update({
     page_id: pageId,

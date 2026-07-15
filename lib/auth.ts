@@ -20,7 +20,11 @@ export function getTokenUser(request: NextRequest): TokenUser | null {
     return {
       sub: payload.sub,
       email: payload.email,
-      full_name: payload.user_metadata?.full_name,
+      full_name:
+        payload.user_metadata?.full_name ??
+        payload.user_metadata?.name ??
+        payload.full_name ??
+        payload.name,
       roles: payload.app_metadata?.roles ?? [],
     };
   } catch {

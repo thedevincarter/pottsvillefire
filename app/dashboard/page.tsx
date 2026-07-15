@@ -1,5 +1,5 @@
 import { Container, Text, Title } from "@mantine/core";
-import { getRunLog } from "@/lib/notion";
+import { getRunLog } from "@/lib/runs";
 import { DashboardCharts } from "./DashboardCharts";
 
 export const dynamic = "force-dynamic";

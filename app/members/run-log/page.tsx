@@ -1,5 +1,5 @@
 import { Container, Title, Text } from "@mantine/core";
-import { getRunLog } from "@/lib/notion";
+import { getRunLog } from "@/lib/runs";
 import { MembersRunLogTable } from "./MembersRunLogTable";
 
 export const dynamic = "force-dynamic";
