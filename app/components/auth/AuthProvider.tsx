@@ -79,17 +79,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // The script is loaded via beforeInteractive in layout.tsx.
-    // Poll briefly in case hydration races the script load.
+    // The widget script and init() are called synchronously in
+    // layout.tsx <head>, so it should already be available.
+    // We just attach React-side listeners and read current user.
     function setup() {
       const identity = getIdentity();
       if (!identity) return false;
 
-      identity.on("init", (initUser?: User) => {
-        if (initUser) setUser(initUser);
-        setReady(true);
-        setLoading(false);
-      });
+      const currentUser = identity.currentUser();
+      if (currentUser) setUser(currentUser);
+      setReady(true);
+      setLoading(false);
 
       identity.on("login", (loggedInUser?: User) => {
         if (loggedInUser) setUser(loggedInUser);
@@ -100,18 +100,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       });
 
-      // init() reads the URL hash to handle invite, recovery, and
-      // confirmation tokens — it will automatically open the widget
-      // when one of those tokens is present.
-      identity.init();
       return true;
     }
 
     if (!setup()) {
+      // Widget script may still be loading on slow connections
       const interval = setInterval(() => {
         if (setup()) clearInterval(interval);
       }, 50);
-      // Give up after 5s
       const timeout = setTimeout(() => {
         clearInterval(interval);
         setLoading(false);

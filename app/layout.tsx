@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -39,9 +38,23 @@ export default function RootLayout({
     <html lang="en" {...mantineHtmlProps}>
       <head>
         <ColorSchemeScript />
-        <Script
-          src="https://identity.netlify.com/v1/netlify-identity-widget.js"
-          strategy="beforeInteractive"
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (window.netlifyIdentity) {
+                window.netlifyIdentity.on("init", function(user) {
+                  if (!user) {
+                    window.netlifyIdentity.on("login", function() {
+                      document.location.href = "/members/run-log";
+                    });
+                  }
+                });
+                window.netlifyIdentity.init();
+              }
+            `,
+          }}
         />
       </head>
 
