@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
 
-    const origin = request.nextUrl.origin;
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host;
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    const origin = `${proto}://${host}`;
 
     // Generate a recovery link (doesn't send email with admin API)
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({

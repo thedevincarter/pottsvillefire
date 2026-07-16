@@ -37,7 +37,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
     }
 
-    const origin = request.nextUrl.origin;
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host;
+    const proto = request.headers.get("x-forwarded-proto") || "https";
+    const origin = `${proto}://${host}`;
 
     // Create user without sending email
     const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
