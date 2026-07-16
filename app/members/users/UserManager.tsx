@@ -23,8 +23,19 @@ type UserProfile = {
   full_name: string;
   role: string;
   phone: string | null;
+  rank: string | null;
+  number: string | null;
   created_at: string;
 };
+
+const rankOptions = [
+  { value: "", label: "Select rank" },
+  { value: "Chief", label: "Chief" },
+  { value: "Assistant Chief", label: "Assistant Chief" },
+  { value: "Captain", label: "Captain" },
+  { value: "Lieutenant", label: "Lieutenant" },
+  { value: "Firefighter", label: "Firefighter" },
+];
 
 export function UserManager() {
   const { isAdmin, getToken } = useAuth();
@@ -171,6 +182,8 @@ function AddUserModal({
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("member");
+  const [rank, setRank] = useState("");
+  const [number, setNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -179,6 +192,8 @@ function AddUserModal({
     setEmail("");
     setFullName("");
     setRole("member");
+    setRank("");
+    setNumber("");
     setError(null);
     setSent(false);
   }
@@ -192,7 +207,7 @@ function AddUserModal({
     const res = await fetch("/api/admin/users", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ email, fullName, role }),
+      body: JSON.stringify({ email, fullName, role, rank: rank || null, number: number || null }),
     });
     const data = await res.json();
     setSaving(false);
@@ -241,6 +256,19 @@ function AddUserModal({
               type="email"
             />
             <NativeSelect
+              label="Rank"
+              data={rankOptions}
+              value={rank}
+              onChange={(e) => setRank(e.currentTarget.value)}
+            />
+            <TextInput
+              label="Number"
+              placeholder="001"
+              value={number}
+              onChange={(e) => setNumber(e.currentTarget.value)}
+              maxLength={3}
+            />
+            <NativeSelect
               label="Role"
               data={[
                 { value: "member", label: "Member" },
@@ -279,6 +307,8 @@ function EditUserModal({
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("member");
   const [phone, setPhone] = useState("");
+  const [rank, setRank] = useState("");
+  const [number, setNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -289,6 +319,8 @@ function EditUserModal({
     setFullName(user.full_name);
     setRole(user.role);
     setPhone(user.phone || "");
+    setRank(user.rank || "");
+    setNumber(user.number || "");
     setError(null);
   }
   if (!user && lastId) {
@@ -305,7 +337,7 @@ function EditUserModal({
     const res = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ id: user.id, fullName, role, phone: phone || null }),
+      body: JSON.stringify({ id: user.id, fullName, role, phone: phone || null, rank: rank || null, number: number || null }),
     });
     const data = await res.json();
     setSaving(false);
@@ -334,6 +366,19 @@ function EditUserModal({
             placeholder="(555) 123-4567"
             value={phone}
             onChange={(e) => setPhone(e.currentTarget.value)}
+          />
+          <NativeSelect
+            label="Rank"
+            data={rankOptions}
+            value={rank}
+            onChange={(e) => setRank(e.currentTarget.value)}
+          />
+          <TextInput
+            label="Number"
+            placeholder="001"
+            value={number}
+            onChange={(e) => setNumber(e.currentTarget.value)}
+            maxLength={3}
           />
           <NativeSelect
             label="Role"

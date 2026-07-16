@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { email, fullName, role } = await request.json();
+    const { email, fullName, role, rank, number } = await request.json();
     if (!email || !fullName) {
       return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
     }
@@ -55,13 +55,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update profile with role if specified
-    if (role && role !== "member") {
-      await supabase
-        .from("profiles")
-        .update({ role, full_name: fullName })
-        .eq("id", newUser.user.id);
-    }
+    // Update profile with additional fields
+    const profileUpdates: Record<string, string | null> = { full_name: fullName };
+    if (role && role !== "member") profileUpdates.role = role;
+    if (rank) profileUpdates.rank = rank;
+    if (number) profileUpdates.number = number;
+
+    await supabase
+      .from("profiles")
+      .update(profileUpdates)
+      .eq("id", newUser.user.id);
 
     // Generate a magic link token for the invite
     const { data: linkData } = await supabase.auth.admin.generateLink({
@@ -112,7 +115,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { id, fullName, role, phone } = await request.json();
+  const { id, fullName, role, phone, rank, number } = await request.json();
   if (!id) {
     return NextResponse.json({ error: "User ID is required" }, { status: 400 });
   }
@@ -121,6 +124,8 @@ export async function PATCH(request: NextRequest) {
   if (fullName !== undefined) updates.full_name = fullName;
   if (role !== undefined) updates.role = role;
   if (phone !== undefined) updates.phone = phone;
+  if (rank !== undefined) updates.rank = rank;
+  if (number !== undefined) updates.number = number;
 
   const { error } = await supabase
     .from("profiles")
