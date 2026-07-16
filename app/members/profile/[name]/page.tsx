@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Container, Paper, Stack, Text, Title } from "@mantine/core";
+import { Container, Group, Paper, Stack, Text, Title } from "@mantine/core";
 import { getMemberStats } from "@/lib/runs";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,12 @@ export default async function MemberProfilePage({
 
   return (
     <Container size="sm" pt="xl">
-      <Title mb="lg">{stats.name}</Title>
+      <Title mb="xs">{stats.name}</Title>
+      {(stats.rank || stats.number) && (
+        <Text size="lg" c="dimmed" mb="lg">
+          {[stats.rank, stats.number ? `#${stats.number}` : null].filter(Boolean).join(" · ")}
+        </Text>
+      )}
       <Paper withBorder p="lg" radius="md">
         <Stack gap="xs">
           <Text size="sm" c="dimmed">

@@ -138,6 +138,8 @@ async function syncRespondingMembers(runId: string, memberNames: string[]) {
 
 export type MemberStats = {
   name: string;
+  rank: string | null;
+  number: string | null;
   totalCalls: number;
 };
 
@@ -201,7 +203,18 @@ export async function getMemberStats(name: string): Promise<MemberStats | null> 
   if (error) throw error;
   if (count === null || count === 0) return null;
 
-  return { name, totalCalls: count };
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("rank, number")
+    .eq("full_name", name)
+    .single();
+
+  return {
+    name,
+    rank: profile?.rank ?? null,
+    number: profile?.number ?? null,
+    totalCalls: count,
+  };
 }
 
 export async function toggleRespondedMember(
