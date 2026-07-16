@@ -44,8 +44,13 @@ export async function POST(request: NextRequest) {
     );
 
     if (inviteError || !inviteData?.user) {
+      console.error("Invite error:", JSON.stringify(inviteError, null, 2));
       return NextResponse.json(
-        { error: inviteError?.message || "Failed to invite user" },
+        {
+          error: inviteError?.message || "Failed to invite user",
+          code: inviteError?.status,
+          name: inviteError?.name,
+        },
         { status: 400 }
       );
     }
