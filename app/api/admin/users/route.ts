@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Resend } from "resend";
 import { getTokenUser, isAdmin } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!);
+}
 
 export async function GET(request: NextRequest) {
   const user = await getTokenUser(request);
@@ -34,23 +39,16 @@ export async function POST(request: NextRequest) {
 
     const origin = request.nextUrl.origin;
 
-    // Invite user via email — Supabase sends the invite through SMTP
-    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
+    // Create user without sending email
+    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
       email,
-      {
-        data: { full_name: fullName },
-        redirectTo: `${origin}/auth/callback?next=/set-password`,
-      }
-    );
+      user_metadata: { full_name: fullName },
+      email_confirm: true,
+    });
 
-    if (inviteError || !inviteData?.user) {
-      console.error("Invite error:", JSON.stringify(inviteError, null, 2));
+    if (createError || !newUser?.user) {
       return NextResponse.json(
-        {
-          error: inviteError?.message || "Failed to invite user",
-          code: inviteError?.status,
-          name: inviteError?.name,
-        },
+        { error: createError?.message || "Failed to create user" },
         { status: 400 }
       );
     }
@@ -60,12 +58,42 @@ export async function POST(request: NextRequest) {
       await supabase
         .from("profiles")
         .update({ role, full_name: fullName })
-        .eq("id", inviteData.user.id);
+        .eq("id", newUser.user.id);
+    }
+
+    // Generate a magic link token for the invite
+    const { data: linkData } = await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo: `${origin}/set-password` },
+    });
+
+    const tokenHash = linkData?.properties?.hashed_token;
+    const inviteUrl = tokenHash
+      ? `${origin}/set-password?token_hash=${tokenHash}&type=magiclink`
+      : `${origin}/login`;
+
+    // Send invite email via Resend
+    const { error: emailError } = await getResend().emails.send({
+      from: "Pottsville Fire <noreply@pottsvillefd.org>",
+      to: email,
+      subject: "You've been invited to Pottsville Fire",
+      html: `
+        <h2>Welcome to Pottsville Fire, ${fullName}!</h2>
+        <p>You've been invited to the Pottsville Fire Department members area.</p>
+        <p>Click the link below to set your password and get started:</p>
+        <p><a href="${inviteUrl}" style="display:inline-block;padding:12px 24px;background:#c92a2a;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Set Your Password</a></p>
+        <p style="color:#666;font-size:13px;">If the button doesn't work, copy and paste this link into your browser:<br>${inviteUrl}</p>
+      `,
+    });
+
+    if (emailError) {
+      console.error("Resend email error:", emailError);
     }
 
     return NextResponse.json({
       ok: true,
-      userId: inviteData.user.id,
+      userId: newUser.user.id,
     });
   } catch (err) {
     console.error("Create user error:", err);

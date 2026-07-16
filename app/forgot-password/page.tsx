@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Container, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
-import { supabaseBrowser } from "@/lib/supabase-browser";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -15,14 +14,16 @@ export default function ForgotPasswordPage() {
   async function handleSubmit() {
     setError(null);
     setLoading(true);
-    const { error: err } = await supabaseBrowser.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
     setLoading(false);
-    if (err) {
-      setError(err.message);
-    } else {
+    if (res.ok) {
       setSent(true);
+    } else {
+      setError("Something went wrong. Please try again.");
     }
   }
 
