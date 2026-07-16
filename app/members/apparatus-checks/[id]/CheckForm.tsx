@@ -7,7 +7,6 @@ import {
   Box,
   Button,
   Card,
-  Checkbox,
   Group,
   Stack,
   Text,
@@ -36,14 +35,15 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
   const [completing, setCompleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  async function handleToggle(index: number) {
+  async function handleStatus(index: number, status: "pass" | "fail") {
     const result = results[index];
     const token = await getToken();
     if (!token || isCompleted) return;
 
-    const newChecked = !result.checked;
+    // Toggle off if same status clicked again
+    const newStatus = result.status === status ? null : status;
     setResults((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, checked: newChecked } : r))
+      prev.map((r, i) => (i === index ? { ...r, status: newStatus, checked: newStatus === "pass" } : r))
     );
 
     setSavingIds((prev) => new Set(prev).add(result.id));
@@ -54,7 +54,8 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
         body: JSON.stringify({
           action: "updateResult",
           resultId: result.id,
-          checked: newChecked,
+          checked: newStatus === "pass",
+          status: newStatus,
           notes: result.notes,
         }),
       });
@@ -81,6 +82,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
           action: "updateResult",
           resultId: result.id,
           checked: result.checked,
+          status: result.status,
           notes: result.notes,
         }),
       });
@@ -130,7 +132,10 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
     }
   }
 
-  const checkedCount = results.filter((r) => r.checked).length;
+  const answeredCount = results.filter((r) => r.status !== null).length;
+  const passCount = results.filter((r) => r.status === "pass").length;
+  const failCount = results.filter((r) => r.status === "fail").length;
+  const allAnswered = answeredCount === results.length;
 
   return (
     <Stack gap="md">
@@ -161,32 +166,25 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
         </Group>
       </Box>
 
-      <Text size="sm" fw={600}>
-        Checklist ({checkedCount}/{results.length})
-      </Text>
+      <Group gap="xs">
+        <Text size="sm" fw={600}>
+          Checklist ({answeredCount}/{results.length})
+        </Text>
+        {passCount > 0 && <Badge color="green" variant="light" size="sm">{passCount} pass</Badge>}
+        {failCount > 0 && <Badge color="red" variant="light" size="sm">{failCount} fail</Badge>}
+      </Group>
 
       <Stack gap="xs">
         {results.map((result, index) => (
           <Card key={result.id} withBorder padding="sm" radius="md">
-            <Group wrap="nowrap" align="flex-start" gap="sm">
-              <Checkbox
-                checked={result.checked}
-                onChange={() => handleToggle(index)}
-                disabled={isCompleted}
-                mt={2}
-              />
+            <Group justify="space-between" wrap="nowrap" align="flex-start" gap="sm">
               <Box style={{ flex: 1 }}>
-                <Text
-                  size="sm"
-                  fw={500}
-                  td={result.checked ? "line-through" : undefined}
-                  c={result.checked ? "dimmed" : undefined}
-                >
+                <Text size="sm" fw={500}>
                   {result.label}
                 </Text>
                 {(result.notes || !isCompleted) && (
                   <Textarea
-                    placeholder="Notes for this item..."
+                    placeholder="Notes..."
                     value={result.notes ?? ""}
                     onChange={(e) => {
                       if (isCompleted) return;
@@ -204,6 +202,26 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
                   />
                 )}
               </Box>
+              <Group gap={4} wrap="nowrap" mt={2}>
+                <Button
+                  size="compact-sm"
+                  variant={result.status === "pass" ? "filled" : "light"}
+                  color="green"
+                  onClick={() => handleStatus(index, "pass")}
+                  disabled={isCompleted}
+                >
+                  Pass
+                </Button>
+                <Button
+                  size="compact-sm"
+                  variant={result.status === "fail" ? "filled" : "light"}
+                  color="red"
+                  onClick={() => handleStatus(index, "fail")}
+                  disabled={isCompleted}
+                >
+                  Fail
+                </Button>
+              </Group>
             </Group>
           </Card>
         ))}
@@ -229,10 +247,10 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
             size="md"
             onClick={handleComplete}
             loading={completing}
-            disabled={checkedCount < results.length}
+            disabled={!allAnswered}
           >
-            {checkedCount < results.length
-              ? `Complete Check (${results.length - checkedCount} items remaining)`
+            {!allAnswered
+              ? `Complete Check (${results.length - answeredCount} items remaining)`
               : "Complete Check"}
           </Button>
           <Button

@@ -32,6 +32,7 @@ export type CheckResult = {
   checkItemId: string;
   label: string;
   checked: boolean;
+  status: "pass" | "fail" | null;
   notes: string | null;
 };
 
@@ -195,11 +196,12 @@ export async function getCheck(checkId: string): Promise<ApparatusCheck | null> 
     .sort((a: { check_items: { sort_order: number } }, b: { check_items: { sort_order: number } }) =>
       a.check_items.sort_order - b.check_items.sort_order
     )
-    .map((r: { id: string; check_item_id: string; check_items: { label: string }; checked: boolean; notes: string | null }) => ({
+    .map((r: { id: string; check_item_id: string; check_items: { label: string }; checked: boolean; status: string | null; notes: string | null }) => ({
       id: r.id,
       checkItemId: r.check_item_id,
       label: r.check_items.label,
       checked: r.checked,
+      status: (r.status as "pass" | "fail" | null) ?? (r.checked ? "pass" : null),
       notes: r.notes,
     }));
 
@@ -219,11 +221,14 @@ export async function getCheck(checkId: string): Promise<ApparatusCheck | null> 
 export async function updateCheckResult(
   resultId: string,
   checked: boolean,
-  notes: string | null
+  notes: string | null,
+  status?: "pass" | "fail" | null
 ) {
+  const updates: Record<string, unknown> = { checked, notes };
+  if (status !== undefined) updates.status = status;
   const { error } = await supabase
     .from("apparatus_check_results")
-    .update({ checked, notes })
+    .update(updates)
     .eq("id", resultId);
 
   if (error) throw error;
@@ -291,6 +296,7 @@ export async function getCheckHistory(filters?: {
         checkItemId: r.check_item_id,
         label: r.check_items.label,
         checked: r.checked,
+        status: (r.status as "pass" | "fail" | null) ?? (r.checked ? "pass" : null),
         notes: r.notes,
       })),
   }));

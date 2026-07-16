@@ -371,31 +371,41 @@ export function ApparatusChecksList({
                 {/* Mobile */}
                 <Box hiddenFrom="sm">
                   <Stack gap="sm">
-                    {filteredHistory.map((h) => (
-                      <Card
-                        key={h.id}
-                        withBorder
-                        padding="sm"
-                        radius="md"
-                        style={{ cursor: "pointer" }}
-                        onClick={() => router.push(`/members/apparatus-checks/${h.id}`)}
-                      >
-                        <Group justify="space-between" mb={4}>
-                          <Text fw={600} size="sm">{h.apparatusName}</Text>
-                          <Badge
-                            color={h.completedAt ? "green" : "yellow"}
-                            variant="light"
-                            size="sm"
-                          >
-                            {h.completedAt ? "Complete" : "In Progress"}
-                          </Badge>
-                        </Group>
-                        <Text size="xs" c="dimmed">
-                          {h.startedAt ? formatDate(h.startedAt) : formatMonth(h.month)}
-                        </Text>
-                        <Text size="xs" c="dimmed">By {h.memberName}</Text>
-                      </Card>
-                    ))}
+                    {filteredHistory.map((h) => {
+                      const passCount = h.results.filter((r) => r.status === "pass").length;
+                      const failCount = h.results.filter((r) => r.status === "fail").length;
+                      return (
+                        <Card
+                          key={h.id}
+                          withBorder
+                          padding="sm"
+                          radius="md"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => router.push(`/members/apparatus-checks/${h.id}`)}
+                        >
+                          <Group justify="space-between" mb={4}>
+                            <Text fw={600} size="sm">{h.apparatusName}</Text>
+                            <Badge
+                              color={h.completedAt ? "green" : "yellow"}
+                              variant="light"
+                              size="sm"
+                            >
+                              {h.completedAt ? "Complete" : "In Progress"}
+                            </Badge>
+                          </Group>
+                          <Text size="xs" c="dimmed">
+                            {h.startedAt ? formatDate(h.startedAt) : formatMonth(h.month)}
+                          </Text>
+                          <Text size="xs" c="dimmed">By {h.memberName}</Text>
+                          {(passCount > 0 || failCount > 0) && (
+                            <Group gap={6} mt={4}>
+                              {passCount > 0 && <Badge color="green" variant="light" size="xs">{passCount} pass</Badge>}
+                              {failCount > 0 && <Badge color="red" variant="light" size="xs">{failCount} fail</Badge>}
+                            </Group>
+                          )}
+                        </Card>
+                      );
+                    })}
                   </Stack>
                 </Box>
 
@@ -407,30 +417,41 @@ export function ApparatusChecksList({
                         <Table.Th>Date</Table.Th>
                         <Table.Th>Apparatus</Table.Th>
                         <Table.Th>Checked By</Table.Th>
+                        <Table.Th>Results</Table.Th>
                         <Table.Th>Status</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {filteredHistory.map((h) => (
-                        <Table.Tr
-                          key={h.id}
-                          style={{ cursor: "pointer" }}
-                          onClick={() => router.push(`/members/apparatus-checks/${h.id}`)}
-                        >
-                          <Table.Td>{h.startedAt ? formatDate(h.startedAt) : formatMonth(h.month)}</Table.Td>
-                          <Table.Td>{h.apparatusName}</Table.Td>
-                          <Table.Td>{h.memberName}</Table.Td>
-                          <Table.Td>
-                            <Badge
-                              color={h.completedAt ? "green" : "yellow"}
-                              variant="light"
-                              size="sm"
-                            >
-                              {h.completedAt ? "Complete" : "In Progress"}
-                            </Badge>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
+                      {filteredHistory.map((h) => {
+                        const passCount = h.results.filter((r) => r.status === "pass").length;
+                        const failCount = h.results.filter((r) => r.status === "fail").length;
+                        return (
+                          <Table.Tr
+                            key={h.id}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => router.push(`/members/apparatus-checks/${h.id}`)}
+                          >
+                            <Table.Td>{h.startedAt ? formatDate(h.startedAt) : formatMonth(h.month)}</Table.Td>
+                            <Table.Td>{h.apparatusName}</Table.Td>
+                            <Table.Td>{h.memberName}</Table.Td>
+                            <Table.Td>
+                              <Group gap={6}>
+                                {passCount > 0 && <Badge color="green" variant="light" size="xs">{passCount} pass</Badge>}
+                                {failCount > 0 && <Badge color="red" variant="light" size="xs">{failCount} fail</Badge>}
+                              </Group>
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge
+                                color={h.completedAt ? "green" : "yellow"}
+                                variant="light"
+                                size="sm"
+                              >
+                                {h.completedAt ? "Complete" : "In Progress"}
+                              </Badge>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
                     </Table.Tbody>
                   </Table>
                 </Box>

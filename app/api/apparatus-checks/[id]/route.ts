@@ -16,8 +16,8 @@ export async function PATCH(
   const { action } = body;
 
   if (action === "updateResult") {
-    const { resultId, checked, notes } = body;
-    await updateCheckResult(resultId, checked, notes ?? null);
+    const { resultId, checked, notes, status } = body;
+    await updateCheckResult(resultId, checked, notes ?? null, status ?? undefined);
     return NextResponse.json({ ok: true });
   }
 
