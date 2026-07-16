@@ -15,12 +15,15 @@ export async function getTokenUser(request: NextRequest): Promise<TokenUser | nu
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;
 
-  // Fetch profile for role
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  // Supabase validates the token signature but never checks ban status, so a
+  // disabled user's unexpired token still passes above. Check it ourselves.
+  const [{ data: authUser }, { data: profile }] = await Promise.all([
+    supabase.auth.admin.getUserById(user.id),
+    supabase.from("profiles").select("role").eq("id", user.id).single(),
+  ]);
+
+  const bannedUntil = authUser?.user?.banned_until;
+  if (bannedUntil && new Date(bannedUntil) > new Date()) return null;
 
   return {
     id: user.id,

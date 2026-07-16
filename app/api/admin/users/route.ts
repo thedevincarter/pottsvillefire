@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { getTokenUser, isAdmin } from "@/lib/auth";
+import { getOrigin, sendInviteEmail } from "@/lib/invite";
 import { supabase } from "@/lib/supabase";
-
-function getResend() {
-  return new Resend(process.env.RESEND_API_KEY!);
-}
 
 export async function GET(request: NextRequest) {
   const user = await getTokenUser(request);
@@ -13,16 +9,36 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("full_name");
+  // Login and ban state live in auth.users, not profiles, so status has to be
+  // derived by merging the two rather than stored alongside the profile.
+  const [profilesResult, authResult] = await Promise.all([
+    supabase.from("profiles").select("*").order("full_name"),
+    supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+  ]);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (profilesResult.error) {
+    return NextResponse.json({ error: profilesResult.error.message }, { status: 500 });
+  }
+  if (authResult.error) {
+    return NextResponse.json({ error: authResult.error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ users: data });
+  const authById = new Map(authResult.data.users.map((u) => [u.id, u]));
+
+  const users = (profilesResult.data ?? []).map((profile) => {
+    const authUser = authById.get(profile.id);
+    const bannedUntil = authUser?.banned_until;
+    const disabled = !!bannedUntil && new Date(bannedUntil) > new Date();
+    const lastSignInAt = authUser?.last_sign_in_at ?? null;
+
+    return {
+      ...profile,
+      last_sign_in_at: lastSignInAt,
+      status: disabled ? "disabled" : lastSignInAt ? "active" : "invited",
+    };
+  });
+
+  return NextResponse.json({ users });
 }
 
 export async function POST(request: NextRequest) {
@@ -37,9 +53,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
     }
 
-    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.host;
-    const proto = request.headers.get("x-forwarded-proto") || "https";
-    const origin = `${proto}://${host}`;
+    const origin = getOrigin(request);
 
     // Create user without sending email
     const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
@@ -66,34 +80,11 @@ export async function POST(request: NextRequest) {
       .update(profileUpdates)
       .eq("id", newUser.user.id);
 
-    // Generate a magic link token for the invite
-    const { data: linkData } = await supabase.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-      options: { redirectTo: `${origin}/set-password` },
-    });
+    const { error: inviteError } = await sendInviteEmail({ origin, email, fullName });
 
-    const tokenHash = linkData?.properties?.hashed_token;
-    const inviteUrl = tokenHash
-      ? `${origin}/set-password?token_hash=${tokenHash}&type=magiclink`
-      : `${origin}/login`;
-
-    // Send invite email via Resend
-    const { error: emailError } = await getResend().emails.send({
-      from: "Pottsville Fire <noreply@pottsvillefd.org>",
-      to: email,
-      subject: "You've been invited to Pottsville Fire",
-      html: `
-        <h2>Welcome to Pottsville Fire, ${fullName}!</h2>
-        <p>You've been invited to the Pottsville Fire Department members area.</p>
-        <p>Click the link below to set your password and get started:</p>
-        <p><a href="${inviteUrl}" style="display:inline-block;padding:12px 24px;background:#c92a2a;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Set Your Password</a></p>
-        <p style="color:#666;font-size:13px;">If the button doesn't work, copy and paste this link into your browser:<br>${inviteUrl}</p>
-      `,
-    });
-
-    if (emailError) {
-      console.error("Resend email error:", emailError);
+    // The account exists either way; the admin can resend from the users page.
+    if (inviteError) {
+      console.error("Invite email error:", inviteError);
     }
 
     return NextResponse.json({

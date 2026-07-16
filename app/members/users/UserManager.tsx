@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Card,
+  Divider,
   Group,
   Modal,
   NativeSelect,
@@ -17,6 +18,8 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
 
+type UserStatus = "invited" | "active" | "disabled";
+
 type UserProfile = {
   id: string;
   email: string;
@@ -26,7 +29,24 @@ type UserProfile = {
   rank: string | null;
   number: string | null;
   created_at: string;
+  last_sign_in_at: string | null;
+  status: UserStatus;
 };
+
+const statusColors: Record<UserStatus, string> = {
+  invited: "yellow",
+  active: "green",
+  disabled: "gray",
+};
+
+function formatLastLogin(value: string | null) {
+  if (!value) return "Never";
+  return new Date(value).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 const rankOptions = [
   { value: "", label: "Select rank" },
@@ -39,7 +59,7 @@ const rankOptions = [
 ];
 
 export function UserManager() {
-  const { isAdmin, getToken } = useAuth();
+  const { isAdmin, getToken, user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
@@ -95,13 +115,18 @@ export function UserManager() {
             >
               <Group justify="space-between" mb={2}>
                 <Text fw={600} size="sm">{u.full_name}</Text>
-                <Badge
-                  color={u.role === "admin" ? "red" : "blue"}
-                  variant="light"
-                  size="sm"
-                >
-                  {u.role}
-                </Badge>
+                <Group gap={6}>
+                  <Badge color={statusColors[u.status]} variant="light" size="sm">
+                    {u.status}
+                  </Badge>
+                  <Badge
+                    color={u.role === "admin" ? "red" : "blue"}
+                    variant="light"
+                    size="sm"
+                  >
+                    {u.role}
+                  </Badge>
+                </Group>
               </Group>
               {(u.rank || u.number) && (
                 <Text size="xs" c="dimmed">
@@ -125,6 +150,8 @@ export function UserManager() {
               <Table.Th>#</Table.Th>
               <Table.Th>Email</Table.Th>
               <Table.Th>Phone</Table.Th>
+              <Table.Th>Status</Table.Th>
+              <Table.Th>Last Login</Table.Th>
               <Table.Th>Role</Table.Th>
               <Table.Th>Actions</Table.Th>
             </Table.Tr>
@@ -137,6 +164,16 @@ export function UserManager() {
                 <Table.Td>{u.number || "-"}</Table.Td>
                 <Table.Td>{u.email}</Table.Td>
                 <Table.Td>{u.phone || "-"}</Table.Td>
+                <Table.Td>
+                  <Badge color={statusColors[u.status]} variant="light" size="sm">
+                    {u.status}
+                  </Badge>
+                </Table.Td>
+                <Table.Td>
+                  <Text size="sm" c={u.last_sign_in_at ? undefined : "dimmed"}>
+                    {formatLastLogin(u.last_sign_in_at)}
+                  </Text>
+                </Table.Td>
                 <Table.Td>
                   <Badge
                     color={u.role === "admin" ? "red" : "blue"}
@@ -173,6 +210,7 @@ export function UserManager() {
         onClose={() => setEditUser(null)}
         getToken={getToken}
         onSaved={fetchUsers}
+        isSelf={!!currentUser && currentUser.id === editUser?.id}
       />
     </>
   );
@@ -308,11 +346,13 @@ function EditUserModal({
   onClose,
   getToken,
   onSaved,
+  isSelf,
 }: {
   user: UserProfile | null;
   onClose: () => void;
   getToken: () => Promise<string | null>;
   onSaved: () => void;
+  isSelf: boolean;
 }) {
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState("member");
@@ -321,6 +361,8 @@ function EditUserModal({
   const [number, setNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"resend" | "disable" | null>(null);
+  const [resent, setResent] = useState(false);
 
   // Sync form when user changes
   const [lastId, setLastId] = useState<string | null>(null);
@@ -332,6 +374,7 @@ function EditUserModal({
     setRank(user.rank || "");
     setNumber(user.number || "");
     setError(null);
+    setResent(false);
   }
   if (!user && lastId) {
     setLastId(null);
@@ -351,6 +394,48 @@ function EditUserModal({
     });
     const data = await res.json();
     setSaving(false);
+
+    if (!res.ok) {
+      setError(data.error);
+    } else {
+      onSaved();
+      onClose();
+    }
+  }
+
+  async function handleResend() {
+    if (!user) return;
+    setError(null);
+    setBusy("resend");
+    const token = await getToken();
+    if (!token) return;
+
+    const res = await fetch("/api/admin/users/resend", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ id: user.id }),
+    });
+    const data = await res.json();
+    setBusy(null);
+
+    if (!res.ok) setError(data.error);
+    else setResent(true);
+  }
+
+  async function handleDisable(disabled: boolean) {
+    if (!user) return;
+    setError(null);
+    setBusy("disable");
+    const token = await getToken();
+    if (!token) return;
+
+    const res = await fetch("/api/admin/users/disable", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ id: user.id, disabled }),
+    });
+    const data = await res.json();
+    setBusy(null);
 
     if (!res.ok) {
       setError(data.error);
@@ -399,6 +484,35 @@ function EditUserModal({
             value={role}
             onChange={(e) => setRole(e.currentTarget.value)}
           />
+          {!isSelf && (
+            <>
+              <Divider mt="xs" />
+              <Group justify="flex-end" gap="xs">
+                {user?.status === "invited" && (
+                  <Button
+                    type="button"
+                    variant="light"
+                    size="compact-sm"
+                    loading={busy === "resend"}
+                    disabled={resent}
+                    onClick={handleResend}
+                  >
+                    {resent ? "Invite sent" : "Resend invite"}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="light"
+                  color={user?.status === "disabled" ? "green" : "red"}
+                  size="compact-sm"
+                  loading={busy === "disable"}
+                  onClick={() => handleDisable(user?.status !== "disabled")}
+                >
+                  {user?.status === "disabled" ? "Enable" : "Disable"}
+                </Button>
+              </Group>
+            </>
+          )}
           {error && <Text size="sm" c="red">{error}</Text>}
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={onClose}>Cancel</Button>
