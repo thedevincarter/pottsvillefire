@@ -145,7 +145,7 @@ export function MembersRunLogTable({
       <Box
         style={{
           position: "sticky",
-          top: 56,
+          top: 96,
           zIndex: 99,
           backgroundColor: "var(--mantine-color-body)",
           borderBottom: "1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4))",
