@@ -62,10 +62,17 @@ export async function POST(request: NextRequest) {
       options: { redirectTo: `${origin}/set-password` },
     });
 
+    // Build a direct link to our set-password page with the token hash
+    // This avoids relying on Supabase's redirect chain
+    const tokenHash = linkData?.properties?.hashed_token;
+    const inviteLink = tokenHash
+      ? `${origin}/set-password?token_hash=${tokenHash}&type=magiclink`
+      : linkData?.properties?.action_link ?? null;
+
     return NextResponse.json({
       ok: true,
       userId: newUser.user.id,
-      inviteLink: linkData?.properties?.action_link ?? null,
+      inviteLink,
     });
   } catch (err) {
     console.error("Create user error:", err);
