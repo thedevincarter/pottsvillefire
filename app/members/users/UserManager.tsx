@@ -102,6 +102,11 @@ export function UserManager() {
                   {u.role}
                 </Badge>
               </Group>
+              {(u.rank || u.number) && (
+                <Text size="xs" c="dimmed">
+                  {[u.rank, u.number ? `#${u.number}` : null].filter(Boolean).join(" · ")}
+                </Text>
+              )}
               <Text size="xs" c="dimmed">{u.email}</Text>
               {u.phone && <Text size="xs" c="dimmed">{u.phone}</Text>}
             </Card>
@@ -115,6 +120,8 @@ export function UserManager() {
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Name</Table.Th>
+              <Table.Th>Rank</Table.Th>
+              <Table.Th>#</Table.Th>
               <Table.Th>Email</Table.Th>
               <Table.Th>Phone</Table.Th>
               <Table.Th>Role</Table.Th>
@@ -125,6 +132,8 @@ export function UserManager() {
             {users.map((u) => (
               <Table.Tr key={u.id}>
                 <Table.Td>{u.full_name}</Table.Td>
+                <Table.Td>{u.rank || "-"}</Table.Td>
+                <Table.Td>{u.number || "-"}</Table.Td>
                 <Table.Td>{u.email}</Table.Td>
                 <Table.Td>{u.phone || "-"}</Table.Td>
                 <Table.Td>

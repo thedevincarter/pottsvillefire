@@ -17,15 +17,21 @@ export function MemberRoster({ members }: { members: MemberCallCounts[] }) {
             <Stack gap="sm">
               {members.map((m) => (
                 <Card key={m.name} withBorder padding="sm" radius="md">
-                  <Anchor
-                    component={Link}
-                    href={`/members/profile/${encodeURIComponent(m.name)}`}
-                    fw={600}
-                    size="sm"
-                    mb={4}
-                  >
-                    {m.name}
-                  </Anchor>
+                  <Group justify="space-between" mb={4}>
+                    <Anchor
+                      component={Link}
+                      href={`/members/profile/${encodeURIComponent(m.name)}`}
+                      fw={600}
+                      size="sm"
+                    >
+                      {m.name}
+                    </Anchor>
+                    {(m.rank || m.number) && (
+                      <Text size="xs" c="dimmed">
+                        {[m.rank, m.number ? `#${m.number}` : null].filter(Boolean).join(" · ")}
+                      </Text>
+                    )}
+                  </Group>
                   <Group gap="lg">
                     <Stack gap={0}>
                       <Text size="xs" c="dimmed">Total</Text>
@@ -56,6 +62,8 @@ export function MemberRoster({ members }: { members: MemberCallCounts[] }) {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Name</Table.Th>
+                <Table.Th>Rank</Table.Th>
+                <Table.Th ta="center">#</Table.Th>
                 <Table.Th ta="center">Total</Table.Th>
                 <Table.Th ta="center">Fire</Table.Th>
                 <Table.Th ta="center">Medical</Table.Th>
@@ -65,7 +73,7 @@ export function MemberRoster({ members }: { members: MemberCallCounts[] }) {
             <Table.Tbody>
               {members.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={5}>
+                  <Table.Td colSpan={7}>
                     <Text c="dimmed" ta="center" py="md">
                       No members found.
                     </Text>
@@ -83,6 +91,8 @@ export function MemberRoster({ members }: { members: MemberCallCounts[] }) {
                         {m.name}
                       </Anchor>
                     </Table.Td>
+                    <Table.Td>{m.rank || "-"}</Table.Td>
+                    <Table.Td ta="center">{m.number || "-"}</Table.Td>
                     <Table.Td ta="center">{m.total}</Table.Td>
                     <Table.Td ta="center">{m.fire}</Table.Td>
                     <Table.Td ta="center">{m.medical}</Table.Td>

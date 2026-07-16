@@ -143,6 +143,8 @@ export type MemberStats = {
 
 export type MemberCallCounts = {
   name: string;
+  rank: string | null;
+  number: string | null;
   total: number;
   fire: number;
   medical: number;
@@ -150,6 +152,7 @@ export type MemberCallCounts = {
 };
 
 export async function getAllMemberCallCounts(): Promise<MemberCallCounts[]> {
+  // Get call counts from run_responses
   const { data, error } = await supabase
     .from("run_responses")
     .select("member_name, runs(call_type)")
@@ -164,13 +167,26 @@ export async function getAllMemberCallCounts(): Promise<MemberCallCounts[]> {
     const callType = (row as any).runs?.call_type ?? null;
     let entry = map.get(name);
     if (!entry) {
-      entry = { name, total: 0, fire: 0, medical: 0, mvc: 0 };
+      entry = { name, rank: null, number: null, total: 0, fire: 0, medical: 0, mvc: 0 };
       map.set(name, entry);
     }
     entry.total++;
     if (callType === "Fire") entry.fire++;
     else if (callType === "Medical") entry.medical++;
     else if (callType === "MVC") entry.mvc++;
+  }
+
+  // Enrich with rank/number from profiles
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("full_name, rank, number");
+
+  for (const p of profiles ?? []) {
+    const entry = map.get(p.full_name);
+    if (entry) {
+      entry.rank = p.rank;
+      entry.number = p.number;
+    }
   }
 
   return [...map.values()].sort((a, b) => b.total - a.total);
