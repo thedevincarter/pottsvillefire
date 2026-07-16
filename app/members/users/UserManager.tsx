@@ -35,6 +35,7 @@ const rankOptions = [
   { value: "Captain", label: "Captain" },
   { value: "Lieutenant", label: "Lieutenant" },
   { value: "Firefighter", label: "Firefighter" },
+  { value: "Proby", label: "Proby" },
 ];
 
 export function UserManager() {
