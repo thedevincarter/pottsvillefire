@@ -26,30 +26,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { email, fullName, role } = await request.json();
-  if (!email || !fullName) {
-    return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
+  try {
+    const { email, fullName, role } = await request.json();
+    if (!email || !fullName) {
+      return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
+    }
+
+    // Invite user — sends an email with a link to set their password
+    const { data: newUser, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+      data: { full_name: fullName },
+      redirectTo: `${request.nextUrl.origin}/set-password`,
+    });
+
+    if (inviteError || !newUser?.user) {
+      console.error("Invite error:", JSON.stringify(inviteError));
+      return NextResponse.json(
+        { error: inviteError?.message || "Failed to invite user" },
+        { status: 400 }
+      );
+    }
+
+    // Update profile with role if specified
+    if (role && role !== "member") {
+      await supabase
+        .from("profiles")
+        .update({ role, full_name: fullName })
+        .eq("id", newUser.user.id);
+    }
+
+    return NextResponse.json({ ok: true, userId: newUser.user.id });
+  } catch (err) {
+    console.error("Create user error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "An unexpected error occurred" },
+      { status: 500 }
+    );
   }
-
-  // Invite user — sends an email with a link to set their password
-  const { data: newUser, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName },
-    redirectTo: `${request.nextUrl.origin}/set-password`,
-  });
-
-  if (inviteError) {
-    return NextResponse.json({ error: inviteError.message }, { status: 400 });
-  }
-
-  // Update profile with role if specified
-  if (role && role !== "member") {
-    await supabase
-      .from("profiles")
-      .update({ role, full_name: fullName })
-      .eq("id", newUser.user.id);
-  }
-
-  return NextResponse.json({ ok: true, userId: newUser.user.id });
 }
 
 export async function PATCH(request: NextRequest) {
