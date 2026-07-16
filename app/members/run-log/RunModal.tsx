@@ -99,7 +99,7 @@ export function RunModal({
           value={date}
           onChange={setDate}
           clearable
-          valueFormat="MM/DD/YYYY hh:mm A"
+          valueFormat="MM/DD/YYYY HH:mm"
         />
         <TextInput
           label="Address"
