@@ -67,6 +67,18 @@
     padding: 0;
   }
 
+  .subnav::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 32px;
+    background: linear-gradient(to right, transparent, var(--mantine-color-body));
+    pointer-events: none;
+    z-index: 1;
+  }
+
   .subnavLink {
     padding: 6px 10px;
     font-size: var(--mantine-font-size-xs);
