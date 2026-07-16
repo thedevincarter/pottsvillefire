@@ -173,14 +173,14 @@ function AddUserModal({
   const [role, setRole] = useState("member");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   function reset() {
     setEmail("");
     setFullName("");
     setRole("member");
     setError(null);
-    setSuccess(false);
+    setInviteLink(null);
   }
 
   async function handleSubmit() {
@@ -200,8 +200,14 @@ function AddUserModal({
     if (!res.ok) {
       setError(data.error);
     } else {
-      setSuccess(true);
+      setInviteLink(data.inviteLink);
       onSaved();
+    }
+  }
+
+  function copyLink() {
+    if (inviteLink) {
+      navigator.clipboard.writeText(inviteLink);
     }
   }
 
@@ -212,13 +218,23 @@ function AddUserModal({
       title="Add User"
       size="sm"
     >
-      {success ? (
-        <Stack align="center" gap="md" py="md">
-          <Text fw={600}>User created</Text>
+      {inviteLink ? (
+        <Stack gap="md" py="md">
+          <Text fw={600} ta="center">User created</Text>
           <Text size="sm" c="dimmed" ta="center">
-            An invite email has been sent to <strong>{email}</strong>. They can click the link to set their password and log in.
+            Share this invite link with <strong>{fullName}</strong>. It will log them in and let them set a password.
           </Text>
-          <Button onClick={() => { reset(); onClose(); }}>Done</Button>
+          <TextInput
+            value={inviteLink}
+            readOnly
+            onClick={(e) => e.currentTarget.select()}
+          />
+          <Group justify="center" gap="sm">
+            <Button variant="light" onClick={copyLink}>
+              Copy Link
+            </Button>
+            <Button onClick={() => { reset(); onClose(); }}>Done</Button>
+          </Group>
         </Stack>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>

@@ -32,16 +32,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
     }
 
-    // Invite user — sends an email with a link to set their password
-    const { data: newUser, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName },
-      redirectTo: `${request.nextUrl.origin}/set-password`,
+    // Create user with email confirmed (no email sent)
+    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+      email,
+      user_metadata: { full_name: fullName },
+      email_confirm: true,
     });
 
-    if (inviteError || !newUser?.user) {
-      console.error("Invite error:", JSON.stringify(inviteError));
+    if (createError || !newUser?.user) {
       return NextResponse.json(
-        { error: inviteError?.message || "Failed to invite user" },
+        { error: createError?.message || "Failed to create user" },
         { status: 400 }
       );
     }
@@ -54,7 +54,19 @@ export async function POST(request: NextRequest) {
         .eq("id", newUser.user.id);
     }
 
-    return NextResponse.json({ ok: true, userId: newUser.user.id });
+    // Generate a magic link the admin can share
+    const origin = request.nextUrl.origin;
+    const { data: linkData } = await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo: `${origin}/set-password` },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      userId: newUser.user.id,
+      inviteLink: linkData?.properties?.action_link ?? null,
+    });
   } catch (err) {
     console.error("Create user error:", err);
     return NextResponse.json(
