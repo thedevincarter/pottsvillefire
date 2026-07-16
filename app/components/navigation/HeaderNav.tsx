@@ -86,13 +86,15 @@ export function HeaderNav() {
             <LoginButton />
           </Group>
 
-          <Burger
-            opened={opened}
-            onClick={toggle}
-            hiddenFrom="xs"
-            size="sm"
-            aria-label="Toggle navigation"
-          />
+          <Group gap="xs" hiddenFrom="xs">
+            {!user && <LoginButton />}
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              size="sm"
+              aria-label="Toggle navigation"
+            />
+          </Group>
         </Container>
       </header>
 
