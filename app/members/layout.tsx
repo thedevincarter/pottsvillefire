@@ -7,5 +7,9 @@ export default function MembersLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <ProtectedRoute>{children}</ProtectedRoute>;
+  return (
+    <ProtectedRoute>
+      <div style={{ paddingTop: 40 }}>{children}</div>
+    </ProtectedRoute>
+  );
 }

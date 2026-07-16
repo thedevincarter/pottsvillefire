@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Burger, Container, Drawer, Group, Menu, Stack, Text } from "@mantine/core";
+import { Burger, Container, Drawer, Group, Menu, ScrollArea, Stack, Text } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { MalteseCross } from "@/app/components/MalteseCross";
 import { LoginButton } from "@/app/components/auth/LoginButton";
@@ -126,6 +126,25 @@ export function HeaderNav() {
           <LoginButton onAction={close} variant="simple" />
         </Stack>
       </Drawer>
+
+      {user && isMembersActive && (
+        <nav className={classes.subnav}>
+          <ScrollArea scrollbarSize={0} type="never">
+            <Group gap={0} wrap="nowrap" px="md">
+              {membersSubItems.map((sub) => (
+                <Link
+                  key={sub.link}
+                  href={sub.link}
+                  className={classes.subnavLink}
+                  data-active={pathname === sub.link || pathname?.startsWith(sub.link + "/") || undefined}
+                >
+                  {sub.label}
+                </Link>
+              ))}
+            </Group>
+          </ScrollArea>
+        </nav>
+      )}
     </>
   );
 }
