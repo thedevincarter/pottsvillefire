@@ -1,30 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button, Container, Loader, Paper, PasswordInput, Stack, Text, Title } from "@mantine/core";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
 export default function SetPasswordPage() {
-  return (
-    <Suspense
-      fallback={
-        <Container size="xs" pt="xl">
-          <Stack align="center" gap="md" py="xl">
-            <Loader />
-            <Text c="dimmed">Loading...</Text>
-          </Stack>
-        </Container>
-      }
-    >
-      <SetPasswordForm />
-    </Suspense>
-  );
-}
-
-function SetPasswordForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -32,58 +14,41 @@ function SetPasswordForm() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    async function verifyToken() {
-      // Check for token_hash in query params (our direct link approach)
-      const tokenHash = searchParams.get("token_hash");
-      const type = searchParams.get("type") as "magiclink" | "email" | undefined;
+    // The auth callback route redirects here with session tokens in the hash.
+    // The Supabase client auto-detects hash params and establishes a session.
+    // We poll briefly to wait for that to complete.
+    let interval: ReturnType<typeof setInterval>;
+    let timeout: ReturnType<typeof setTimeout>;
 
-      if (tokenHash && type) {
-        const { error: verifyError } = await supabaseBrowser.auth.verifyOtp({
-          token_hash: tokenHash,
-          type,
-        });
-        if (verifyError) {
-          setError("Invalid or expired invite link. Please ask your admin for a new invite.");
-        }
-        setChecking(false);
-        return;
-      }
-
-      // Check for error param (from failed callback)
-      if (searchParams.get("error")) {
-        setError("Invalid or expired invite link. Please ask your admin for a new invite.");
-        setChecking(false);
-        return;
-      }
-
-      // Fallback: check if there's already a session (e.g. from hash fragment redirect)
+    async function check() {
       const { data: { session } } = await supabaseBrowser.auth.getSession();
       if (session) {
         setChecking(false);
-        return;
+        return true;
       }
+      return false;
+    }
 
-      // Wait briefly for Supabase client to pick up hash params
-      const interval = setInterval(async () => {
-        const { data } = await supabaseBrowser.auth.getSession();
-        if (data.session) {
-          clearInterval(interval);
-          setChecking(false);
-        }
+    check().then((hasSession) => {
+      if (hasSession) return;
+
+      interval = setInterval(async () => {
+        const found = await check();
+        if (found) clearInterval(interval);
       }, 500);
-      const timeout = setTimeout(() => {
+
+      timeout = setTimeout(() => {
         clearInterval(interval);
         setChecking(false);
         setError("Invalid or expired invite link. Please ask your admin for a new invite.");
-      }, 5000);
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    }
+      }, 8000);
+    });
 
-    verifyToken();
-  }, [searchParams]);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   async function handleSubmit() {
     if (password.length < 6) {

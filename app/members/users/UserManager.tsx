@@ -173,14 +173,14 @@ function AddUserModal({
   const [role, setRole] = useState("member");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   function reset() {
     setEmail("");
     setFullName("");
     setRole("member");
     setError(null);
-    setInviteLink(null);
+    setSent(false);
   }
 
   async function handleSubmit() {
@@ -200,14 +200,8 @@ function AddUserModal({
     if (!res.ok) {
       setError(data.error);
     } else {
-      setInviteLink(data.inviteLink);
+      setSent(true);
       onSaved();
-    }
-  }
-
-  function copyLink() {
-    if (inviteLink) {
-      navigator.clipboard.writeText(inviteLink);
     }
   }
 
@@ -218,21 +212,13 @@ function AddUserModal({
       title="Add User"
       size="sm"
     >
-      {inviteLink ? (
+      {sent ? (
         <Stack gap="md" py="md">
-          <Text fw={600} ta="center">User created</Text>
+          <Text fw={600} ta="center">Invite sent!</Text>
           <Text size="sm" c="dimmed" ta="center">
-            Share this invite link with <strong>{fullName}</strong>. It will log them in and let them set a password.
+            An invite email has been sent to <strong>{email}</strong>. They can use the link in the email to set their password and log in.
           </Text>
-          <TextInput
-            value={inviteLink}
-            readOnly
-            onClick={(e) => e.currentTarget.select()}
-          />
-          <Group justify="center" gap="sm">
-            <Button variant="light" onClick={copyLink}>
-              Copy Link
-            </Button>
+          <Group justify="center">
             <Button onClick={() => { reset(); onClose(); }}>Done</Button>
           </Group>
         </Stack>
@@ -269,7 +255,7 @@ function AddUserModal({
                 Cancel
               </Button>
               <Button type="submit" color="red" loading={saving}>
-                Create User
+                Send Invite
               </Button>
             </Group>
           </Stack>

@@ -32,16 +32,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
     }
 
-    // Create user with email confirmed (no email sent)
-    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-      email,
-      user_metadata: { full_name: fullName },
-      email_confirm: true,
-    });
+    const origin = request.nextUrl.origin;
 
-    if (createError || !newUser?.user) {
+    // Invite user via email — Supabase sends the invite through SMTP
+    const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
+      email,
+      {
+        data: { full_name: fullName },
+        redirectTo: `${origin}/auth/callback?next=/set-password`,
+      }
+    );
+
+    if (inviteError || !inviteData?.user) {
       return NextResponse.json(
-        { error: createError?.message || "Failed to create user" },
+        { error: inviteError?.message || "Failed to invite user" },
         { status: 400 }
       );
     }
@@ -51,28 +55,12 @@ export async function POST(request: NextRequest) {
       await supabase
         .from("profiles")
         .update({ role, full_name: fullName })
-        .eq("id", newUser.user.id);
+        .eq("id", inviteData.user.id);
     }
-
-    // Generate a magic link the admin can share
-    const origin = request.nextUrl.origin;
-    const { data: linkData } = await supabase.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-      options: { redirectTo: `${origin}/set-password` },
-    });
-
-    // Build a direct link to our set-password page with the token hash
-    // This avoids relying on Supabase's redirect chain
-    const tokenHash = linkData?.properties?.hashed_token;
-    const inviteLink = tokenHash
-      ? `${origin}/set-password?token_hash=${tokenHash}&type=magiclink`
-      : linkData?.properties?.action_link ?? null;
 
     return NextResponse.json({
       ok: true,
-      userId: newUser.user.id,
-      inviteLink,
+      userId: inviteData.user.id,
     });
   } catch (err) {
     console.error("Create user error:", err);
