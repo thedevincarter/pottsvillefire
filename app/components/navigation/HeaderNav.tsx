@@ -22,6 +22,7 @@ const memberSubLinks = [
   { link: "/members/run-log", label: "Run Log" },
   { link: "/members/apparatus-checks", label: "Apparatus Checks" },
   { link: "/members/roster", label: "Roster" },
+  { link: "/members/charts", label: "Analytics" },
 ];
 
 const adminSubLinks = [

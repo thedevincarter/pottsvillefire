@@ -217,6 +217,138 @@ export async function getMemberStats(name: string): Promise<MemberStats | null> 
   };
 }
 
+export type ChartData = {
+  callsByMonth: { month: string; count: number }[];
+  callsByComplaint: { complaint: string; count: number }[];
+  callsByType: { type: string; count: number; color: string }[];
+  callTypeByMonth: { month: string; Fire: number; Medical: number; MVC: number }[];
+};
+
+const typeColors: Record<string, string> = {
+  Fire: "red.6",
+  Medical: "blue.6",
+  MVC: "yellow.6",
+};
+
+export async function getChartData(): Promise<ChartData> {
+  const { data: runs, error } = await supabase
+    .from("runs")
+    .select("date, call_type, complaint")
+    .not("date", "is", null)
+    .order("date");
+
+  if (error) throw error;
+
+  const monthMap = new Map<string, number>();
+  const complaintMap = new Map<string, number>();
+  const typeMap = new Map<string, number>();
+  const typeByMonthMap = new Map<string, { Fire: number; Medical: number; MVC: number }>();
+
+  for (const run of runs ?? []) {
+    const d = new Date(run.date);
+    const monthKey = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+
+    monthMap.set(monthKey, (monthMap.get(monthKey) || 0) + 1);
+
+    if (run.complaint) {
+      complaintMap.set(run.complaint, (complaintMap.get(run.complaint) || 0) + 1);
+    }
+
+    if (run.call_type) {
+      typeMap.set(run.call_type, (typeMap.get(run.call_type) || 0) + 1);
+    }
+
+    if (!typeByMonthMap.has(monthKey)) {
+      typeByMonthMap.set(monthKey, { Fire: 0, Medical: 0, MVC: 0 });
+    }
+    const entry = typeByMonthMap.get(monthKey)!;
+    if (run.call_type === "Fire") entry.Fire++;
+    else if (run.call_type === "Medical") entry.Medical++;
+    else if (run.call_type === "MVC") entry.MVC++;
+  }
+
+  return {
+    callsByMonth: [...monthMap.entries()].map(([month, count]) => ({ month, count })),
+    callsByComplaint: [...complaintMap.entries()]
+      .map(([complaint, count]) => ({ complaint, count }))
+      .sort((a, b) => b.count - a.count),
+    callsByType: [...typeMap.entries()].map(([type, count]) => ({
+      type,
+      count,
+      color: typeColors[type] || "gray.6",
+    })),
+    callTypeByMonth: [...typeByMonthMap.entries()].map(([month, counts]) => ({
+      month,
+      ...counts,
+    })),
+  };
+}
+
+export type MemberResponseStats = {
+  name: string;
+  rank: string | null;
+  number: string | null;
+  totalCalls: number;
+  responded: number;
+  fire: { total: number; responded: number };
+  medical: { total: number; responded: number };
+  mvc: { total: number; responded: number };
+};
+
+export async function getMemberResponseStats(name: string): Promise<MemberResponseStats | null> {
+  // Get all runs with their responses
+  const { data: runs, error } = await supabase
+    .from("runs")
+    .select("id, call_type, run_responses(member_name)")
+    .not("date", "is", null);
+
+  if (error) throw error;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("rank, number")
+    .eq("full_name", name)
+    .single();
+
+  let totalCalls = 0;
+  let responded = 0;
+  const fire = { total: 0, responded: 0 };
+  const medical = { total: 0, responded: 0 };
+  const mvc = { total: 0, responded: 0 };
+
+  for (const run of runs ?? []) {
+    totalCalls++;
+    const didRespond = (run.run_responses ?? []).some(
+      (r: { member_name: string }) => r.member_name === name
+    );
+    if (didRespond) responded++;
+
+    if (run.call_type === "Fire") {
+      fire.total++;
+      if (didRespond) fire.responded++;
+    } else if (run.call_type === "Medical") {
+      medical.total++;
+      if (didRespond) medical.responded++;
+    } else if (run.call_type === "MVC") {
+      mvc.total++;
+      if (didRespond) mvc.responded++;
+    }
+  }
+
+  if (responded === 0) return null;
+
+  return {
+    name,
+    rank: profile?.rank ?? null,
+    number: profile?.number ?? null,
+    totalCalls,
+    responded,
+    fire,
+    medical,
+    mvc,
+  };
+}
+
 export async function toggleRespondedMember(
   runId: string,
   memberName: string,
