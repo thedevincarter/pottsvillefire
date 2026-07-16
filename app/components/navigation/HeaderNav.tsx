@@ -131,20 +131,22 @@ export function HeaderNav() {
 
       {user && isMembersActive && (
         <nav className={classes.subnav}>
-          <ScrollArea scrollbarSize={0} type="never">
-            <Group gap={0} wrap="nowrap" px="md">
-              {membersSubItems.map((sub) => (
-                <Link
-                  key={sub.link}
-                  href={sub.link}
-                  className={classes.subnavLink}
-                  data-active={pathname === sub.link || pathname?.startsWith(sub.link + "/") || undefined}
-                >
-                  {sub.label}
-                </Link>
-              ))}
-            </Group>
-          </ScrollArea>
+          <Container className={classes.subnavInner}>
+            <ScrollArea scrollbarSize={0} type="never">
+              <Group gap={0} wrap="nowrap">
+                {membersSubItems.map((sub) => (
+                  <Link
+                    key={sub.link}
+                    href={sub.link}
+                    className={classes.subnavLink}
+                    data-active={pathname === sub.link || pathname?.startsWith(sub.link + "/") || undefined}
+                  >
+                    {sub.label}
+                  </Link>
+                ))}
+              </Group>
+            </ScrollArea>
+          </Container>
         </nav>
       )}
     </>

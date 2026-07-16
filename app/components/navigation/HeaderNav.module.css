@@ -54,6 +54,12 @@
   align-items: center;
 }
 
+.subnavInner {
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
 .subnavLink {
   display: block;
   white-space: nowrap;
