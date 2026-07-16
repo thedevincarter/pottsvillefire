@@ -58,6 +58,14 @@
   height: 40px;
   display: flex;
   align-items: center;
+  overflow: visible;
+}
+
+@media (max-width: $mantine-breakpoint-sm) {
+  .subnavInner {
+    max-width: 100%;
+    padding: 0;
+  }
 }
 
 .subnavLink {
