@@ -84,6 +84,33 @@ export async function updateTraining(trainingId: string, data: TrainingInput) {
   }
 }
 
+// Toggle a single member in/out of a training's attendee list. Used by the
+// self-serve "Mark as attended" control (any member, for themselves).
+export async function toggleTrainingAttendance(
+  trainingId: string,
+  memberName: string
+) {
+  const { data: existing } = await supabase
+    .from("training_attendees")
+    .select("id")
+    .eq("training_id", trainingId)
+    .eq("member_name", memberName)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("training_attendees")
+      .delete()
+      .eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("training_attendees")
+      .insert({ training_id: trainingId, member_name: memberName });
+    if (error) throw error;
+  }
+}
+
 async function syncAttendees(trainingId: string, memberNames: string[]) {
   // Replace the whole attendee set each save — simplest and the lists are small.
   await supabase.from("training_attendees").delete().eq("training_id", trainingId);

@@ -42,10 +42,13 @@ export function TrainingLogTable({
   initialTrainings: TrainingEntry[];
   formOptions: TrainingFormOptions;
 }) {
-  const { isAdmin, getToken } = useAuth();
+  const { user, profile, isAdmin, getToken } = useAuth();
   const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editTraining, setEditTraining] = useState<TrainingEntry | null>(null);
+  const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set());
+
+  const memberName = profile?.fullName || user?.email || "";
 
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState("all");
@@ -105,6 +108,26 @@ export function TrainingLogTable({
     }
     return true;
   });
+
+  async function handleAttend(trainingId: string) {
+    const token = await getToken();
+    if (!token) return;
+
+    setAttendingIds((prev) => new Set(prev).add(trainingId));
+    try {
+      await fetch(`/api/trainings/${trainingId}/attend`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      router.refresh();
+    } finally {
+      setAttendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(trainingId);
+        return next;
+      });
+    }
+  }
 
   async function handleSave(data: Record<string, unknown>, id?: string) {
     const token = await getToken();
@@ -189,7 +212,7 @@ export function TrainingLogTable({
                   {t.attendees.length} attended
                 </Text>
                 {t.attendees.length > 0 && (
-                  <Group gap={4} mb={isAdmin ? 8 : 0} wrap="wrap">
+                  <Group gap={4} mb={8} wrap="wrap">
                     {t.attendees.map((name) => (
                       <Anchor
                         key={name}
@@ -202,8 +225,23 @@ export function TrainingLogTable({
                     ))}
                   </Group>
                 )}
-                {isAdmin && (
-                  <Group justify="flex-end">
+                <Group gap="xs" wrap="nowrap">
+                  {(() => {
+                    const attended = t.attendees.includes(memberName);
+                    return (
+                      <Button
+                        variant={attended ? "filled" : "light"}
+                        color={attended ? "green" : "gray"}
+                        size="compact-sm"
+                        fullWidth
+                        loading={attendingIds.has(t.id)}
+                        onClick={() => handleAttend(t.id)}
+                      >
+                        {attended ? "✓ Attended" : "Mark as Attended"}
+                      </Button>
+                    );
+                  })()}
+                  {isAdmin && (
                     <ActionIcon
                       variant="light"
                       size="md"
@@ -212,8 +250,8 @@ export function TrainingLogTable({
                     >
                       {"✎"}
                     </ActionIcon>
-                  </Group>
-                )}
+                  )}
+                </Group>
               </Card>
             ))}
           </Stack>
@@ -230,13 +268,13 @@ export function TrainingLogTable({
                 <Table.Th>Type</Table.Th>
                 <Table.Th>Attended</Table.Th>
                 <Table.Th>Members</Table.Th>
-                {isAdmin && <Table.Th>Actions</Table.Th>}
+                <Table.Th>Actions</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {filteredTrainings.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={isAdmin ? 5 : 4}>
+                  <Table.Td colSpan={5}>
                     <Text c="dimmed" ta="center" py="md">
                       No trainings found.
                     </Text>
@@ -278,20 +316,39 @@ export function TrainingLogTable({
                         </Text>
                       )}
                     </Table.Td>
-                    {isAdmin && (
-                      <Table.Td>
-                        <Tooltip label="Edit training">
-                          <ActionIcon
-                            variant="light"
-                            size="sm"
-                            onClick={() => setEditTraining(t)}
-                            aria-label="Edit training"
-                          >
-                            {"✎"}
-                          </ActionIcon>
-                        </Tooltip>
-                      </Table.Td>
-                    )}
+                    <Table.Td>
+                      <Group gap="xs" wrap="nowrap">
+                        {(() => {
+                          const attended = t.attendees.includes(memberName);
+                          return (
+                            <Tooltip label={attended ? "Remove your attendance" : "Mark yourself attended"}>
+                              <ActionIcon
+                                variant={attended ? "filled" : "light"}
+                                color={attended ? "green" : "gray"}
+                                size="sm"
+                                loading={attendingIds.has(t.id)}
+                                onClick={() => handleAttend(t.id)}
+                                aria-label="Toggle attendance"
+                              >
+                                {"✓"}
+                              </ActionIcon>
+                            </Tooltip>
+                          );
+                        })()}
+                        {isAdmin && (
+                          <Tooltip label="Edit training">
+                            <ActionIcon
+                              variant="light"
+                              size="sm"
+                              onClick={() => setEditTraining(t)}
+                              aria-label="Edit training"
+                            >
+                              {"✎"}
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                      </Group>
+                    </Table.Td>
                   </Table.Tr>
                 ))
               )}
