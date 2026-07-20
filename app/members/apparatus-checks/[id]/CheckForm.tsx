@@ -42,9 +42,15 @@ function groupResults(results: CheckResult[]) {
 }
 
 export function CheckForm({ check }: { check: ApparatusCheck }) {
-  const { getToken, isAdmin } = useAuth();
+  const { user, profile, getToken, isAdmin } = useAuth();
   const router = useRouter();
   const isCompleted = !!check.completedAt;
+
+  // Only the member who started the check (or an admin) may fill it out. Others
+  // get a read-only view. Server-side checks enforce this too.
+  const memberName = profile?.fullName || user?.email || "";
+  const canEdit = isAdmin || memberName === check.memberName;
+  const readOnly = isCompleted || !canEdit;
 
   const [results, setResults] = useState(
     check.results.map((r) => ({ ...r }))
@@ -58,7 +64,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
 
   async function handleStatus(result: CheckResult, status: "pass" | "fail") {
     const token = await getToken();
-    if (!token || isCompleted) return;
+    if (!token || readOnly) return;
 
     // Toggle off if same status clicked again
     const newStatus = result.status === status ? null : status;
@@ -93,7 +99,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
   async function handleSaveNotes(resultId: string) {
     const result = results.find((r) => r.id === resultId);
     const token = await getToken();
-    if (!token || !result || isCompleted) return;
+    if (!token || !result || readOnly) return;
 
     setSavingIds((prev) => new Set(prev).add(result.id));
     try {
@@ -119,7 +125,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
 
   async function handleComplete() {
     const token = await getToken();
-    if (!token) return;
+    if (!token || !canEdit) return;
 
     setCompleting(true);
     try {
@@ -136,6 +142,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
   }
 
   async function handleCancel() {
+    if (!canEdit) return;
     if (!confirm("Cancel this check? All progress will be lost.")) return;
     const token = await getToken();
     if (!token) return;
@@ -276,19 +283,19 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
                       <Text size="sm" fw={500}>
                         {result.label}
                       </Text>
-                      {(result.notes || !isCompleted) && (
+                      {(result.notes || !readOnly) && (
                         <Textarea
                           placeholder="Notes..."
                           value={result.notes ?? ""}
                           onChange={(e) => {
-                            if (isCompleted) return;
+                            if (readOnly) return;
                             const val = e.currentTarget.value;
                             setResults((prev) =>
                               prev.map((r) => (r.id === result.id ? { ...r, notes: val } : r))
                             );
                           }}
                           onBlur={() => handleSaveNotes(result.id)}
-                          disabled={isCompleted}
+                          disabled={readOnly}
                           size="xs"
                           mt={4}
                           minRows={1}
@@ -302,7 +309,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
                         variant={result.status === "pass" ? "filled" : "light"}
                         color="green"
                         onClick={() => handleStatus(result, "pass")}
-                        disabled={isCompleted}
+                        disabled={readOnly}
                       >
                         Pass
                       </Button>
@@ -311,7 +318,7 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
                         variant={result.status === "fail" ? "filled" : "light"}
                         color="red"
                         onClick={() => handleStatus(result, "fail")}
-                        disabled={isCompleted}
+                        disabled={readOnly}
                       >
                         Fail
                       </Button>
@@ -330,13 +337,20 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
           placeholder="Any additional observations..."
           value={generalNotes}
           onChange={(e) => setGeneralNotes(e.currentTarget.value)}
-          disabled={isCompleted}
+          disabled={readOnly}
           minRows={3}
           autosize
         />
       </Box>
 
-      {!isCompleted && (
+      {!isCompleted && !canEdit && (
+        <Text size="sm" c="dimmed" ta="center">
+          This check is in progress by {check.memberName}. Only they or an admin
+          can fill it out.
+        </Text>
+      )}
+
+      {!isCompleted && canEdit && (
         <>
           <Button
             color="green"

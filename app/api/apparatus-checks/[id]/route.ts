@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenUser, isAdmin } from "@/lib/auth";
+import { getTokenUser, isAdmin, displayName } from "@/lib/auth";
 import {
   updateCheckResult,
   completeCheck,
   cancelCheck,
   resetCheck,
   deleteCheck,
+  getCheckMemberName,
 } from "@/lib/apparatus";
 
 export async function PATCH(
@@ -21,19 +22,29 @@ export async function PATCH(
   const body = await request.json();
   const { action } = body;
 
-  if (action === "updateResult") {
-    const { resultId, checked, notes, status } = body;
-    await updateCheckResult(resultId, checked, notes ?? null, status ?? undefined);
-    return NextResponse.json({ ok: true });
-  }
+  // Checking items off, completing, and cancelling an in-progress check are
+  // limited to the member who started it (or an admin).
+  if (action === "updateResult" || action === "complete" || action === "cancel") {
+    const memberName = await getCheckMemberName(id);
+    if (memberName === null) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (!isAdmin(user) && memberName !== displayName(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
-  if (action === "complete") {
-    const { generalNotes } = body;
-    await completeCheck(id, generalNotes ?? null);
-    return NextResponse.json({ ok: true });
-  }
+    if (action === "updateResult") {
+      const { resultId, checked, notes, status } = body;
+      await updateCheckResult(resultId, checked, notes ?? null, status ?? undefined);
+      return NextResponse.json({ ok: true });
+    }
 
-  if (action === "cancel") {
+    if (action === "complete") {
+      const { generalNotes } = body;
+      await completeCheck(id, generalNotes ?? null);
+      return NextResponse.json({ ok: true });
+    }
+
     await cancelCheck(id);
     return NextResponse.json({ ok: true });
   }

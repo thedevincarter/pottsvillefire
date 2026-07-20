@@ -265,6 +265,21 @@ export async function getCheck(checkId: string): Promise<ApparatusCheck | null> 
   };
 }
 
+// Who started a check, for ownership checks. Returns null if it doesn't exist.
+export async function getCheckMemberName(checkId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("apparatus_checks")
+    .select("member_name")
+    .eq("id", checkId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  return data.member_name ?? null;
+}
+
 export async function updateCheckResult(
   resultId: string,
   checked: boolean,
