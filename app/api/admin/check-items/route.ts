@@ -8,11 +8,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { apparatusId, label, sortOrder } = await request.json();
+  const { apparatusId, label, sortOrder, parentId } = await request.json();
   if (!apparatusId || !label) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
-  await createCheckItem(apparatusId, label, sortOrder ?? 0);
+  await createCheckItem(apparatusId, label, sortOrder ?? 0, parentId ?? null);
   return NextResponse.json({ ok: true });
 }
 

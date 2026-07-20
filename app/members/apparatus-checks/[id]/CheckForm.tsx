@@ -14,7 +14,7 @@ import {
   Title,
 } from "@mantine/core";
 import { useAuth } from "@/app/components/auth/AuthProvider";
-import type { ApparatusCheck } from "@/lib/apparatus";
+import type { ApparatusCheck, CheckResult } from "@/lib/apparatus";
 
 function formatMonth(month: string) {
   const [year, m] = month.split("-");
@@ -22,8 +22,27 @@ function formatMonth(month: string) {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
+// Results arrive ordered with each header's subitems directly after it, so
+// grouping consecutive runs by parent is enough to rebuild the sections.
+function groupResults(results: CheckResult[]) {
+  const groups: { key: string; header: string | null; items: CheckResult[] }[] = [];
+  for (const result of results) {
+    const last = groups[groups.length - 1];
+    if (last && last.key === (result.parentId ?? "__top")) {
+      last.items.push(result);
+    } else {
+      groups.push({
+        key: result.parentId ?? "__top",
+        header: result.parentId ? result.parentLabel : null,
+        items: [result],
+      });
+    }
+  }
+  return groups;
+}
+
 export function CheckForm({ check }: { check: ApparatusCheck }) {
-  const { getToken } = useAuth();
+  const { getToken, isAdmin } = useAuth();
   const router = useRouter();
   const isCompleted = !!check.completedAt;
 
@@ -34,16 +53,19 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [completing, setCompleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  async function handleStatus(index: number, status: "pass" | "fail") {
-    const result = results[index];
+  async function handleStatus(result: CheckResult, status: "pass" | "fail") {
     const token = await getToken();
     if (!token || isCompleted) return;
 
     // Toggle off if same status clicked again
     const newStatus = result.status === status ? null : status;
     setResults((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, status: newStatus, checked: newStatus === "pass" } : r))
+      prev.map((r) =>
+        r.id === result.id ? { ...r, status: newStatus, checked: newStatus === "pass" } : r
+      )
     );
 
     setSavingIds((prev) => new Set(prev).add(result.id));
@@ -68,10 +90,10 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
     }
   }
 
-  async function handleSaveNotes(index: number) {
-    const result = results[index];
+  async function handleSaveNotes(resultId: string) {
+    const result = results.find((r) => r.id === resultId);
     const token = await getToken();
-    if (!token || isCompleted) return;
+    if (!token || !result || isCompleted) return;
 
     setSavingIds((prev) => new Set(prev).add(result.id));
     try {
@@ -132,6 +154,70 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
     }
   }
 
+  async function handleReset() {
+    if (
+      !confirm(
+        "Reset this check? Every pass/fail, item note and the general notes will be cleared so it can be redone."
+      )
+    ) {
+      return;
+    }
+    const token = await getToken();
+    if (!token) return;
+
+    setResetting(true);
+    try {
+      const res = await fetch(`/api/apparatus-checks/${check.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset" }),
+      });
+      if (!res.ok) {
+        alert("Could not reset this check.");
+        return;
+      }
+      // Clear the local copy too — this component seeds its state from props
+      // once, so refresh() alone would leave the old answers on screen.
+      setResults((prev) =>
+        prev.map((r) => ({ ...r, status: null, checked: false, notes: null }))
+      );
+      setGeneralNotes("");
+      router.refresh();
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (
+      !confirm(
+        "Delete this check? It will be removed from history and this apparatus can be checked again for the month."
+      )
+    ) {
+      return;
+    }
+    const token = await getToken();
+    if (!token) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/apparatus-checks/${check.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete" }),
+      });
+      if (!res.ok) {
+        alert("Could not delete this check.");
+        return;
+      }
+      router.push("/members/apparatus-checks");
+      router.refresh();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const groups = groupResults(results);
   const answeredCount = results.filter((r) => r.status !== null).length;
   const passCount = results.filter((r) => r.status === "pass").length;
   const failCount = results.filter((r) => r.status === "fail").length;
@@ -175,55 +261,66 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
       </Group>
 
       <Stack gap="xs">
-        {results.map((result, index) => (
-          <Card key={result.id} withBorder padding="sm" radius="md">
-            <Group justify="space-between" wrap="nowrap" align="flex-start" gap="sm">
-              <Box style={{ flex: 1 }}>
-                <Text size="sm" fw={500}>
-                  {result.label}
-                </Text>
-                {(result.notes || !isCompleted) && (
-                  <Textarea
-                    placeholder="Notes..."
-                    value={result.notes ?? ""}
-                    onChange={(e) => {
-                      if (isCompleted) return;
-                      const val = e.currentTarget.value;
-                      setResults((prev) =>
-                        prev.map((r, i) => (i === index ? { ...r, notes: val } : r))
-                      );
-                    }}
-                    onBlur={() => handleSaveNotes(index)}
-                    disabled={isCompleted}
-                    size="xs"
-                    mt={4}
-                    minRows={1}
-                    autosize
-                  />
-                )}
-              </Box>
-              <Group gap={4} wrap="nowrap" mt={2}>
-                <Button
-                  size="compact-sm"
-                  variant={result.status === "pass" ? "filled" : "light"}
-                  color="green"
-                  onClick={() => handleStatus(index, "pass")}
-                  disabled={isCompleted}
-                >
-                  Pass
-                </Button>
-                <Button
-                  size="compact-sm"
-                  variant={result.status === "fail" ? "filled" : "light"}
-                  color="red"
-                  onClick={() => handleStatus(index, "fail")}
-                  disabled={isCompleted}
-                >
-                  Fail
-                </Button>
-              </Group>
-            </Group>
-          </Card>
+        {groups.map((group) => (
+          <Box key={group.key}>
+            {group.header && (
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={6} mt={4}>
+                {group.header}
+              </Text>
+            )}
+            <Stack gap="xs" pl={group.header ? "md" : 0}>
+              {group.items.map((result) => (
+                <Card key={result.id} withBorder padding="sm" radius="md">
+                  <Group justify="space-between" wrap="nowrap" align="flex-start" gap="sm">
+                    <Box style={{ flex: 1 }}>
+                      <Text size="sm" fw={500}>
+                        {result.label}
+                      </Text>
+                      {(result.notes || !isCompleted) && (
+                        <Textarea
+                          placeholder="Notes..."
+                          value={result.notes ?? ""}
+                          onChange={(e) => {
+                            if (isCompleted) return;
+                            const val = e.currentTarget.value;
+                            setResults((prev) =>
+                              prev.map((r) => (r.id === result.id ? { ...r, notes: val } : r))
+                            );
+                          }}
+                          onBlur={() => handleSaveNotes(result.id)}
+                          disabled={isCompleted}
+                          size="xs"
+                          mt={4}
+                          minRows={1}
+                          autosize
+                        />
+                      )}
+                    </Box>
+                    <Group gap={4} wrap="nowrap" mt={2}>
+                      <Button
+                        size="compact-sm"
+                        variant={result.status === "pass" ? "filled" : "light"}
+                        color="green"
+                        onClick={() => handleStatus(result, "pass")}
+                        disabled={isCompleted}
+                      >
+                        Pass
+                      </Button>
+                      <Button
+                        size="compact-sm"
+                        variant={result.status === "fail" ? "filled" : "light"}
+                        color="red"
+                        onClick={() => handleStatus(result, "fail")}
+                        disabled={isCompleted}
+                      >
+                        Fail
+                      </Button>
+                    </Group>
+                  </Group>
+                </Card>
+              ))}
+            </Stack>
+          </Box>
         ))}
       </Stack>
 
@@ -263,6 +360,36 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
             Cancel Check
           </Button>
         </>
+      )}
+
+      {isCompleted && isAdmin && (
+        <Card withBorder padding="sm" radius="md">
+          <Text size="sm" fw={600} mb={4}>
+            Admin
+          </Text>
+          <Text size="xs" c="dimmed" mb="xs">
+            Reset reopens this check with every answer cleared. Delete removes it
+            from history and frees the month so it can be started over.
+          </Text>
+          <Group grow>
+            <Button
+              variant="light"
+              color="yellow"
+              onClick={handleReset}
+              loading={resetting}
+            >
+              Reset Check
+            </Button>
+            <Button
+              variant="light"
+              color="red"
+              onClick={handleDelete}
+              loading={deleting}
+            >
+              Delete Check
+            </Button>
+          </Group>
+        </Card>
       )}
 
       <Button

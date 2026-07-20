@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Group, Modal, Stack, TagsInput, TextInput } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
@@ -49,29 +49,18 @@ export function RunModal({
   const [mutualAid, setMutualAid] = useState<string | null>(null);
   const [respondingMembers, setRespondingMembers] = useState<string[]>([]);
 
-  // Reset form when modal opens with new data
-  const [lastId, setLastId] = useState<string | undefined>();
-  if (opened && initialData?.id !== lastId) {
-    setLastId(initialData?.id);
+  // Sync the form each time the modal opens: populate from initialData when
+  // editing, otherwise start blank. Resetting on open rather than on close
+  // avoids wiping the fields mid close-animation.
+  useEffect(() => {
+    if (!opened) return;
     setDate(toDateString(initialData?.date ?? null));
     setAddress(initialData?.address ?? "");
     setCallType(initialData?.callType ?? null);
     setComplaint(initialData?.complaint ?? null);
     setMutualAid(initialData?.mutualAid ?? null);
     setRespondingMembers(initialData?.respondedMembers ?? []);
-  }
-  if (opened && !initialData && lastId !== undefined) {
-    setLastId(undefined);
-    setDate(null);
-    setAddress("");
-    setCallType(null);
-    setComplaint(null);
-    setMutualAid(null);
-    setRespondingMembers([]);
-  }
-  if (!opened && lastId !== undefined) {
-    setLastId(undefined);
-  }
+  }, [opened, initialData]);
 
   async function handleSubmit() {
     setSaving(true);

@@ -13,6 +13,7 @@ export type CheckItem = {
   label: string;
   sortOrder: number;
   active: boolean;
+  parentId: string | null;
 };
 
 export type ApparatusCheck = {
@@ -34,6 +35,9 @@ export type CheckResult = {
   checked: boolean;
   status: "pass" | "fail" | null;
   notes: string | null;
+  /** Set when this result belongs under a section header. */
+  parentId: string | null;
+  parentLabel: string | null;
 };
 
 export type ApparatusCheckSummary = {
@@ -76,6 +80,7 @@ export async function getCheckItemsForApparatus(apparatusId: string): Promise<Ch
     label: c.label,
     sortOrder: c.sort_order,
     active: c.active,
+    parentId: c.parent_id ?? null,
   }));
 }
 
@@ -92,6 +97,7 @@ export async function getAllCheckItems(): Promise<CheckItem[]> {
     label: c.label,
     sortOrder: c.sort_order,
     active: c.active,
+    parentId: c.parent_id ?? null,
   }));
 }
 
@@ -108,6 +114,50 @@ export async function getAllApparatus(): Promise<Apparatus[]> {
     sortOrder: a.sort_order,
     active: a.active,
   }));
+}
+
+type ItemLookup = Map<string, CheckItem>;
+
+async function getCheckItemLookup(): Promise<ItemLookup> {
+  const items = await getAllCheckItems();
+  return new Map(items.map((i) => [i.id, i]));
+}
+
+// Leaf results are ordered by their section header's position first, so
+// subitems sit directly beneath the header they belong to.
+function sortKey(itemId: string, lookup: ItemLookup): [number, number, number] {
+  const item = lookup.get(itemId);
+  if (!item) return [Number.MAX_SAFE_INTEGER, 0, 0];
+  const parent = item.parentId ? lookup.get(item.parentId) : undefined;
+  return parent ? [parent.sortOrder, 1, item.sortOrder] : [item.sortOrder, 0, 0];
+}
+
+function mapResults(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  raw: any[],
+  lookup: ItemLookup
+): CheckResult[] {
+  return raw
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((r: any) => {
+      const item = lookup.get(r.check_item_id);
+      const parent = item?.parentId ? lookup.get(item.parentId) : undefined;
+      return {
+        id: r.id,
+        checkItemId: r.check_item_id,
+        label: r.check_items?.label ?? item?.label ?? "",
+        checked: r.checked,
+        status: (r.status as "pass" | "fail" | null) ?? (r.checked ? "pass" : null),
+        notes: r.notes,
+        parentId: parent?.id ?? null,
+        parentLabel: parent?.label ?? null,
+      };
+    })
+    .sort((a, b) => {
+      const ka = sortKey(a.checkItemId, lookup);
+      const kb = sortKey(b.checkItemId, lookup);
+      return ka[0] - kb[0] || ka[1] - kb[1] || ka[2] - kb[2];
+    });
 }
 
 export async function getMonthChecks(month: string): Promise<ApparatusCheckSummary[]> {
@@ -160,8 +210,15 @@ export async function startCheck(
     throw error;
   }
 
+  // Items that have active children act as section headers — they aren't
+  // answered themselves, so only leaves get result rows.
+  const parentIds = new Set(
+    checkItems.map((i) => i.parentId).filter((id): id is string => !!id)
+  );
+  const leafItems = checkItems.filter((item) => !parentIds.has(item.id));
+
   // Create result rows for each check item
-  const rows = checkItems.map((item) => ({
+  const rows = leafItems.map((item) => ({
     check_id: check.id,
     check_item_id: item.id,
     checked: false,
@@ -192,18 +249,8 @@ export async function getCheck(checkId: string): Promise<ApparatusCheck | null> 
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const d = data as any;
-  const results: CheckResult[] = (d.apparatus_check_results ?? [])
-    .sort((a: { check_items: { sort_order: number } }, b: { check_items: { sort_order: number } }) =>
-      a.check_items.sort_order - b.check_items.sort_order
-    )
-    .map((r: { id: string; check_item_id: string; check_items: { label: string }; checked: boolean; status: string | null; notes: string | null }) => ({
-      id: r.id,
-      checkItemId: r.check_item_id,
-      label: r.check_items.label,
-      checked: r.checked,
-      status: (r.status as "pass" | "fail" | null) ?? (r.checked ? "pass" : null),
-      notes: r.notes,
-    }));
+  const lookup = await getCheckItemLookup();
+  const results = mapResults(d.apparatus_check_results ?? [], lookup);
 
   return {
     id: d.id,
@@ -257,6 +304,35 @@ export async function cancelCheck(checkId: string) {
   if (error) throw error;
 }
 
+// Admin: reopen a completed check, wiping every answer, per-item note and the
+// general notes so it can be redone. The check row, member and started_at stay.
+export async function resetCheck(checkId: string) {
+  const { error: resultsError } = await supabase
+    .from("apparatus_check_results")
+    .update({ checked: false, status: null, notes: null })
+    .eq("check_id", checkId);
+
+  if (resultsError) throw resultsError;
+
+  const { error } = await supabase
+    .from("apparatus_checks")
+    .update({ general_notes: null, completed_at: null })
+    .eq("id", checkId);
+
+  if (error) throw error;
+}
+
+// Admin: remove a check outright, completed or not, freeing that
+// apparatus/month slot so it can be started fresh. Results cascade-delete.
+export async function deleteCheck(checkId: string) {
+  const { error } = await supabase
+    .from("apparatus_checks")
+    .delete()
+    .eq("id", checkId);
+
+  if (error) throw error;
+}
+
 export async function getCheckHistory(filters?: {
   month?: string;
   apparatusId?: string;
@@ -277,6 +353,8 @@ export async function getCheckHistory(filters?: {
   const { data, error } = await query;
   if (error) throw error;
 
+  const lookup = await getCheckItemLookup();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let results = (data ?? []).map((d: any) => ({
     id: d.id,
@@ -287,18 +365,7 @@ export async function getCheckHistory(filters?: {
     generalNotes: d.general_notes,
     startedAt: d.started_at,
     completedAt: d.completed_at,
-    results: (d.apparatus_check_results ?? [])
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .sort((a: any, b: any) => a.check_items.sort_order - b.check_items.sort_order)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((r: any) => ({
-        id: r.id,
-        checkItemId: r.check_item_id,
-        label: r.check_items.label,
-        checked: r.checked,
-        status: (r.status as "pass" | "fail" | null) ?? (r.checked ? "pass" : null),
-        notes: r.notes,
-      })),
+    results: mapResults(d.apparatus_check_results ?? [], lookup),
   }));
 
   if (filters?.search) {
@@ -331,10 +398,15 @@ export async function updateApparatus(id: string, name: string, sortOrder: numbe
   if (error) throw error;
 }
 
-export async function createCheckItem(apparatusId: string, label: string, sortOrder: number) {
+export async function createCheckItem(
+  apparatusId: string,
+  label: string,
+  sortOrder: number,
+  parentId?: string | null
+) {
   const { error } = await supabase
     .from("check_items")
-    .insert({ apparatus_id: apparatusId, label, sort_order: sortOrder });
+    .insert({ apparatus_id: apparatusId, label, sort_order: sortOrder, parent_id: parentId ?? null });
   if (error) throw error;
 }
 

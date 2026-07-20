@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenUser } from "@/lib/auth";
-import { updateCheckResult, completeCheck, cancelCheck } from "@/lib/apparatus";
+import { getTokenUser, isAdmin } from "@/lib/auth";
+import {
+  updateCheckResult,
+  completeCheck,
+  cancelCheck,
+  resetCheck,
+  deleteCheck,
+} from "@/lib/apparatus";
 
 export async function PATCH(
   request: NextRequest,
@@ -29,6 +35,19 @@ export async function PATCH(
 
   if (action === "cancel") {
     await cancelCheck(id);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Reset and delete rewrite or destroy a completed check, so they're admin-only.
+  if (action === "reset" || action === "delete") {
+    if (!isAdmin(user)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (action === "reset") {
+      await resetCheck(id);
+    } else {
+      await deleteCheck(id);
+    }
     return NextResponse.json({ ok: true });
   }
 

@@ -52,8 +52,13 @@ function ApparatusCheckItems({
 }) {
   const [newLabel, setNewLabel] = useState("");
   const [saving, setSaving] = useState(false);
+  const [subParentId, setSubParentId] = useState<string | null>(null);
+  const [subLabel, setSubLabel] = useState("");
+  const [savingSub, setSavingSub] = useState(false);
 
   const items = checkItems.filter((c) => c.apparatusId === apparatus.id);
+  const topLevel = items.filter((c) => !c.parentId);
+  const childrenOf = (id: string) => items.filter((c) => c.parentId === id);
 
   async function addItem() {
     const token = await getToken();
@@ -62,10 +67,30 @@ function ApparatusCheckItems({
     await fetch("/api/admin/check-items", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ apparatusId: apparatus.id, label: newLabel.trim(), sortOrder: items.length }),
+      body: JSON.stringify({ apparatusId: apparatus.id, label: newLabel.trim(), sortOrder: topLevel.length }),
     });
     setNewLabel("");
     setSaving(false);
+    onUpdate();
+  }
+
+  async function addSubItem(parent: CheckItem) {
+    const token = await getToken();
+    if (!token || !subLabel.trim()) return;
+    setSavingSub(true);
+    await fetch("/api/admin/check-items", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        apparatusId: apparatus.id,
+        label: subLabel.trim(),
+        sortOrder: childrenOf(parent.id).length,
+        parentId: parent.id,
+      }),
+    });
+    setSubLabel("");
+    setSavingSub(false);
+    setSubParentId(null);
     onUpdate();
   }
 
@@ -82,17 +107,69 @@ function ApparatusCheckItems({
 
   return (
     <Stack gap="xs">
-      {items.length === 0 && (
+      {topLevel.length === 0 && (
         <Text size="xs" c="dimmed">No checklist items yet.</Text>
       )}
-      {items.map((c) => (
-        <Group key={c.id} justify="space-between" pl="sm">
-          <Text size="sm" c={c.active ? undefined : "dimmed"} td={c.active ? undefined : "line-through"}>
-            {c.label}
-          </Text>
-          <Switch checked={c.active} onChange={() => toggleItem(c)} size="sm" />
-        </Group>
-      ))}
+      {topLevel.map((c) => {
+        const subItems = childrenOf(c.id);
+        // An item with subitems is a section header on the check form — the
+        // subitems are what get passed or failed.
+        const isHeader = subItems.length > 0;
+        return (
+          <Stack key={c.id} gap={4}>
+            <Group justify="space-between" pl="sm" wrap="nowrap">
+              <Group gap={6} wrap="nowrap">
+                <Text size="sm" c={c.active ? undefined : "dimmed"} td={c.active ? undefined : "line-through"}>
+                  {c.label}
+                </Text>
+                {isHeader && (
+                  <Badge size="xs" variant="light" color="gray">
+                    section
+                  </Badge>
+                )}
+              </Group>
+              <Group gap={4} wrap="nowrap">
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => {
+                    setSubLabel("");
+                    setSubParentId(subParentId === c.id ? null : c.id);
+                  }}
+                >
+                  + Sub
+                </Button>
+                <Switch checked={c.active} onChange={() => toggleItem(c)} size="sm" />
+              </Group>
+            </Group>
+
+            {subItems.map((s) => (
+              <Group key={s.id} justify="space-between" pl="xl" wrap="nowrap">
+                <Text size="xs" c="dimmed" td={s.active ? undefined : "line-through"}>
+                  {s.label}
+                </Text>
+                <Switch checked={s.active} onChange={() => toggleItem(s)} size="xs" />
+              </Group>
+            ))}
+
+            {subParentId === c.id && (
+              <Group gap="xs" pl="xl">
+                <TextInput
+                  placeholder={`New subitem under "${c.label}"`}
+                  value={subLabel}
+                  onChange={(e) => setSubLabel(e.currentTarget.value)}
+                  size="xs"
+                  style={{ flex: 1 }}
+                />
+                <Button size="compact-sm" color="red" onClick={() => addSubItem(c)} loading={savingSub}>
+                  Add
+                </Button>
+              </Group>
+            )}
+          </Stack>
+        );
+      })}
       <Group gap="xs" pl="sm">
         <TextInput
           placeholder="New checklist item"
