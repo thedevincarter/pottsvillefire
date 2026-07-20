@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ActionIcon,
   Badge,
   Box,
   Button,
@@ -16,6 +17,7 @@ import {
   Tabs,
   Text,
   TextInput,
+  Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
@@ -55,6 +57,7 @@ function ApparatusCheckItems({
   const [subParentId, setSubParentId] = useState<string | null>(null);
   const [subLabel, setSubLabel] = useState("");
   const [savingSub, setSavingSub] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const items = checkItems.filter((c) => c.apparatusId === apparatus.id);
   const topLevel = items.filter((c) => !c.parentId);
@@ -105,6 +108,33 @@ function ApparatusCheckItems({
     onUpdate();
   }
 
+  async function deleteItem(c: CheckItem) {
+    const isSection = childrenOf(c.id).length > 0;
+    const message = isSection
+      ? `Delete "${c.label}" and its subitems? This can't be undone.`
+      : `Delete "${c.label}"? This can't be undone.`;
+    if (!confirm(message)) return;
+
+    const token = await getToken();
+    if (!token) return;
+    setDeletingId(c.id);
+    try {
+      const res = await fetch("/api/admin/check-items", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: c.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error ?? "Could not delete this item.");
+        return;
+      }
+      onUpdate();
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <Stack gap="xs">
       {topLevel.length === 0 && (
@@ -141,6 +171,18 @@ function ApparatusCheckItems({
                   + Sub
                 </Button>
                 <Switch checked={c.active} onChange={() => toggleItem(c)} size="sm" />
+                <Tooltip label="Delete item">
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="sm"
+                    loading={deletingId === c.id}
+                    onClick={() => deleteItem(c)}
+                    aria-label="Delete item"
+                  >
+                    {"✕"}
+                  </ActionIcon>
+                </Tooltip>
               </Group>
             </Group>
 
@@ -149,7 +191,21 @@ function ApparatusCheckItems({
                 <Text size="xs" c="dimmed" td={s.active ? undefined : "line-through"}>
                   {s.label}
                 </Text>
-                <Switch checked={s.active} onChange={() => toggleItem(s)} size="xs" />
+                <Group gap={4} wrap="nowrap">
+                  <Switch checked={s.active} onChange={() => toggleItem(s)} size="xs" />
+                  <Tooltip label="Delete subitem">
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      size="sm"
+                      loading={deletingId === s.id}
+                      onClick={() => deleteItem(s)}
+                      aria-label="Delete subitem"
+                    >
+                      {"✕"}
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
               </Group>
             ))}
 

@@ -417,3 +417,34 @@ export async function updateCheckItem(id: string, label: string, sortOrder: numb
     .eq("id", id);
   if (error) throw error;
 }
+
+// Admin: permanently remove a checklist item. Subitems cascade via parent_id.
+// Blocked once an item (or one of its subitems) has been used in any check —
+// those result rows FK-reference it and also source their label from it, so a
+// hard delete would fail and/or corrupt history. Deactivating is the tool for
+// items already in use.
+export async function deleteCheckItem(id: string) {
+  // Collect the item plus any subitems, since a used subitem blocks too.
+  const { data: children, error: childErr } = await supabase
+    .from("check_items")
+    .select("id")
+    .eq("parent_id", id);
+  if (childErr) throw childErr;
+
+  const ids = [id, ...(children ?? []).map((c) => c.id)];
+
+  const { count, error: countErr } = await supabase
+    .from("apparatus_check_results")
+    .select("id", { count: "exact", head: true })
+    .in("check_item_id", ids);
+  if (countErr) throw countErr;
+
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      "This item has been used in one or more checks. Deactivate it instead to remove it from future checks while keeping past records."
+    );
+  }
+
+  const { error } = await supabase.from("check_items").delete().eq("id", id);
+  if (error) throw error;
+}
