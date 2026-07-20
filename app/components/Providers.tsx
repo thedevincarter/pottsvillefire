@@ -1,13 +1,15 @@
 "use client";
 
 import { MantineProvider, createTheme } from "@mantine/core";
+import dayjs from "dayjs";
 import { AuthProvider } from "./auth/AuthProvider";
 
 // Single-letter weekday headers (S M T W T F S). Mantine has no dayjs token
-// for this, so weekdayFormat takes a function keyed on the day index.
+// for this, so weekdayFormat takes a function. In v9 it receives the day as a
+// "YYYY-MM-DD" string (not a Date), so parse it with dayjs to get the index.
 const weekdays = "SMTWTFS";
 const dateDefaults = {
-  weekdayFormat: (date: Date) => weekdays[date.getDay()],
+  weekdayFormat: (date: string) => weekdays[dayjs(date).day()],
   firstDayOfWeek: 0 as const, // start the week on Sunday to match S M T W T F S
   highlightToday: true,
 };
