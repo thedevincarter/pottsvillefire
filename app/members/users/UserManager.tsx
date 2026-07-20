@@ -139,6 +139,9 @@ export function UserManager() {
               )}
               <Text size="xs" c="dimmed">{u.email}</Text>
               {u.phone && <Text size="xs" c="dimmed">{u.phone}</Text>}
+              <Text size="xs" c="dimmed">
+                Last login: {formatLastLogin(u.last_sign_in_at)}
+              </Text>
             </Card>
           ))}
         </Stack>
