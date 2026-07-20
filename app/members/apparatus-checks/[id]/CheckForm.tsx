@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Alert,
   Badge,
   Box,
   Button,
@@ -259,6 +260,13 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
         </Group>
       </Box>
 
+      {!isCompleted && !canEdit && (
+        <Alert color="yellow" variant="light">
+          This check is in progress by {check.memberName}. Only they or an admin
+          can fill it out.
+        </Alert>
+      )}
+
       <Group gap="xs">
         <Text size="sm" fw={600}>
           Checklist ({answeredCount}/{results.length})
@@ -342,13 +350,6 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
           autosize
         />
       </Box>
-
-      {!isCompleted && !canEdit && (
-        <Text size="sm" c="dimmed" ta="center">
-          This check is in progress by {check.memberName}. Only they or an admin
-          can fill it out.
-        </Text>
-      )}
 
       {!isCompleted && canEdit && (
         <>
