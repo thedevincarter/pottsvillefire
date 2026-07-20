@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getTrainingCountsByMember, getMemberTrainingStats } from "./trainings";
 
 export type RunLogEntry = {
   id: string;
@@ -151,6 +152,7 @@ export type MemberCallCounts = {
   fire: number;
   medical: number;
   mvc: number;
+  trainings: number;
 };
 
 export async function getAllMemberCallCounts(): Promise<MemberCallCounts[]> {
@@ -163,19 +165,31 @@ export async function getAllMemberCallCounts(): Promise<MemberCallCounts[]> {
   if (error) throw error;
 
   const map = new Map<string, MemberCallCounts>();
+  const ensureEntry = (name: string) => {
+    let entry = map.get(name);
+    if (!entry) {
+      entry = { name, rank: null, number: null, total: 0, fire: 0, medical: 0, mvc: 0, trainings: 0 };
+      map.set(name, entry);
+    }
+    return entry;
+  };
+
   for (const row of data ?? []) {
     const name = row.member_name;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const callType = (row as any).runs?.call_type ?? null;
-    let entry = map.get(name);
-    if (!entry) {
-      entry = { name, rank: null, number: null, total: 0, fire: 0, medical: 0, mvc: 0 };
-      map.set(name, entry);
-    }
+    const entry = ensureEntry(name);
     entry.total++;
     if (callType === "Fire") entry.fire++;
     else if (callType === "Medical") entry.medical++;
     else if (callType === "MVC") entry.mvc++;
+  }
+
+  // Merge in trainings attended — including members who have only attended
+  // trainings and never responded to a call.
+  const trainingCounts = await getTrainingCountsByMember();
+  for (const [name, count] of trainingCounts) {
+    ensureEntry(name).trainings = count;
   }
 
   // Enrich with rank/number from profiles
@@ -293,6 +307,8 @@ export type MemberResponseStats = {
   fire: { total: number; responded: number };
   medical: { total: number; responded: number };
   mvc: { total: number; responded: number };
+  trainingsAttended: number;
+  totalTrainings: number;
 };
 
 export async function getMemberResponseStats(name: string): Promise<MemberResponseStats | null> {
@@ -335,7 +351,10 @@ export async function getMemberResponseStats(name: string): Promise<MemberRespon
     }
   }
 
-  if (responded === 0) return null;
+  const training = await getMemberTrainingStats(name);
+
+  // Show a profile for anyone with call responses or training attendance.
+  if (responded === 0 && training.attended === 0) return null;
 
   return {
     name,
@@ -346,6 +365,8 @@ export async function getMemberResponseStats(name: string): Promise<MemberRespon
     fire,
     medical,
     mvc,
+    trainingsAttended: training.attended,
+    totalTrainings: training.total,
   };
 }
 

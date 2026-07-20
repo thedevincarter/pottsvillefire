@@ -49,6 +49,10 @@ export function MemberRoster({ members }: { members: MemberCallCounts[] }) {
                       <Text size="xs" c="dimmed">MVC</Text>
                       <Text size="sm" fw={600}>{m.mvc}</Text>
                     </Stack>
+                    <Stack gap={0}>
+                      <Text size="xs" c="dimmed">Trainings</Text>
+                      <Text size="sm" fw={600}>{m.trainings}</Text>
+                    </Stack>
                   </Group>
                 </Card>
               ))}
@@ -68,12 +72,13 @@ export function MemberRoster({ members }: { members: MemberCallCounts[] }) {
                 <Table.Th ta="center">Fire</Table.Th>
                 <Table.Th ta="center">Medical</Table.Th>
                 <Table.Th ta="center">MVC</Table.Th>
+                <Table.Th ta="center">Trainings</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
               {members.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={7}>
+                  <Table.Td colSpan={8}>
                     <Text c="dimmed" ta="center" py="md">
                       No members found.
                     </Text>
@@ -97,6 +102,7 @@ export function MemberRoster({ members }: { members: MemberCallCounts[] }) {
                     <Table.Td ta="center">{m.fire}</Table.Td>
                     <Table.Td ta="center">{m.medical}</Table.Td>
                     <Table.Td ta="center">{m.mvc}</Table.Td>
+                    <Table.Td ta="center">{m.trainings}</Table.Td>
                   </Table.Tr>
                 ))
               )}

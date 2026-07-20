@@ -41,6 +41,39 @@ export async function getTrainingFormOptions(): Promise<TrainingFormOptions> {
   return { types, memberNames };
 }
 
+// Trainings-attended count per member, for the roster.
+export async function getTrainingCountsByMember(): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from("training_attendees")
+    .select("member_name");
+
+  if (error) throw error;
+
+  const map = new Map<string, number>();
+  for (const row of data ?? []) {
+    map.set(row.member_name, (map.get(row.member_name) ?? 0) + 1);
+  }
+  return map;
+}
+
+// A single member's attendance: how many trainings they attended out of all.
+export async function getMemberTrainingStats(
+  name: string
+): Promise<{ attended: number; total: number }> {
+  const [totalRes, attendedRes] = await Promise.all([
+    supabase.from("trainings").select("id", { count: "exact", head: true }),
+    supabase
+      .from("training_attendees")
+      .select("id", { count: "exact", head: true })
+      .eq("member_name", name),
+  ]);
+
+  if (totalRes.error) throw totalRes.error;
+  if (attendedRes.error) throw attendedRes.error;
+
+  return { attended: attendedRes.count ?? 0, total: totalRes.count ?? 0 };
+}
+
 export async function getTrainings(): Promise<TrainingEntry[]> {
   const { data, error } = await supabase
     .from("trainings")

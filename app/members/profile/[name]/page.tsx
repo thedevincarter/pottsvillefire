@@ -43,8 +43,15 @@ export default async function MemberProfilePage({
           </Text>
         </Paper>
         <Paper withBorder p="md" radius="md" ta="center">
-          <Text size="xs" c="dimmed">Rank</Text>
-          <Text size="xl" fw={700}>{stats.rank || "-"}</Text>
+          <Text size="xs" c="dimmed">Trainings %</Text>
+          <Text size="xl" fw={700}>
+            {stats.totalTrainings > 0
+              ? Math.round((stats.trainingsAttended / stats.totalTrainings) * 100)
+              : 0}%
+          </Text>
+          <Text size="xs" c="dimmed">
+            {stats.trainingsAttended} / {stats.totalTrainings}
+          </Text>
         </Paper>
       </SimpleGrid>
 
