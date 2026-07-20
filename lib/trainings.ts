@@ -4,12 +4,14 @@ export type TrainingEntry = {
   id: string;
   date: string | null;
   type: string | null;
+  notes: string | null;
   attendees: string[];
 };
 
 export type TrainingInput = {
   date?: string;
   type?: string;
+  notes?: string;
   attendees?: string[];
 };
 
@@ -51,6 +53,7 @@ export async function getTrainings(): Promise<TrainingEntry[]> {
     id: t.id,
     date: t.date,
     type: t.type,
+    notes: t.notes,
     attendees: (t.training_attendees ?? [])
       .map((a: { member_name: string }) => a.member_name)
       .sort((a: string, b: string) => a.localeCompare(b)),
@@ -60,7 +63,7 @@ export async function getTrainings(): Promise<TrainingEntry[]> {
 export async function createTraining(data: TrainingInput) {
   const { data: training, error } = await supabase
     .from("trainings")
-    .insert({ date: data.date || null, type: data.type || null })
+    .insert({ date: data.date || null, type: data.type || null, notes: data.notes || null })
     .select("id")
     .single();
 
@@ -74,7 +77,7 @@ export async function createTraining(data: TrainingInput) {
 export async function updateTraining(trainingId: string, data: TrainingInput) {
   const { error } = await supabase
     .from("trainings")
-    .update({ date: data.date || null, type: data.type || null })
+    .update({ date: data.date || null, type: data.type || null, notes: data.notes || null })
     .eq("id", trainingId);
 
   if (error) throw error;

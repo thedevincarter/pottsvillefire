@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Group, Modal, Stack, TagsInput } from "@mantine/core";
+import { Button, Group, Modal, Stack, TagsInput, Textarea } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -44,6 +44,7 @@ export function TrainingModal({
   const [saving, setSaving] = useState(false);
   const [date, setDate] = useState<string | null>(null);
   const [type, setType] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
   const [attendees, setAttendees] = useState<string[]>([]);
 
   // Sync the form each time the modal opens: populate from initialData when
@@ -52,6 +53,7 @@ export function TrainingModal({
     if (!opened) return;
     setDate(toDateString(initialData?.date ?? null));
     setType(initialData?.type ?? null);
+    setNotes(initialData?.notes ?? "");
     setAttendees(initialData?.attendees ?? []);
   }, [opened, initialData]);
 
@@ -61,6 +63,7 @@ export function TrainingModal({
       await onSave({
         date: toISOCentral(date),
         type: type ?? "",
+        notes,
         attendees,
       });
       onClose();
@@ -95,6 +98,14 @@ export function TrainingModal({
           value={attendees}
           onChange={setAttendees}
           clearable
+        />
+        <Textarea
+          label="Notes"
+          placeholder="Details about the training..."
+          value={notes}
+          onChange={(e) => setNotes(e.currentTarget.value)}
+          minRows={3}
+          autosize
         />
         <Group justify="flex-end" mt="md">
           <Button variant="default" onClick={onClose}>

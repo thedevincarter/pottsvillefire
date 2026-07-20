@@ -208,6 +208,11 @@ export function TrainingLogTable({
                     </Badge>
                   )}
                 </Group>
+                {t.notes && (
+                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }} mb={4}>
+                    {t.notes}
+                  </Text>
+                )}
                 <Text size="xs" c="dimmed" mb={4}>
                   {t.attendees.length} attended
                 </Text>
@@ -260,12 +265,13 @@ export function TrainingLogTable({
 
       {/* Desktop table view */}
       <Box visibleFrom="sm">
-        <Table.ScrollContainer minWidth={700}>
+        <Table.ScrollContainer minWidth={820}>
           <Table striped highlightOnHover verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Date</Table.Th>
                 <Table.Th>Type</Table.Th>
+                <Table.Th>Notes</Table.Th>
                 <Table.Th>Attended</Table.Th>
                 <Table.Th>Members</Table.Th>
                 <Table.Th>Actions</Table.Th>
@@ -274,7 +280,7 @@ export function TrainingLogTable({
             <Table.Tbody>
               {filteredTrainings.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={5}>
+                  <Table.Td colSpan={6}>
                     <Text c="dimmed" ta="center" py="md">
                       No trainings found.
                     </Text>
@@ -294,6 +300,9 @@ export function TrainingLogTable({
                       ) : (
                         "-"
                       )}
+                    </Table.Td>
+                    <Table.Td style={{ whiteSpace: "pre-wrap", minWidth: 200 }}>
+                      {t.notes ? t.notes : <Text size="sm" c="dimmed">-</Text>}
                     </Table.Td>
                     <Table.Td>{t.attendees.length}</Table.Td>
                     <Table.Td>
