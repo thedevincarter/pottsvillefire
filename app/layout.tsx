@@ -8,14 +8,9 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/charts/styles.css";
 
-import {
-  ColorSchemeScript,
-  MantineProvider,
-  createTheme,
-  mantineHtmlProps,
-} from "@mantine/core";
+import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
 import { HeaderNav } from "./components/navigation/HeaderNav";
-import { AuthProvider } from "./components/auth/AuthProvider";
+import { Providers } from "./components/Providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,15 +20,6 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-});
-
-const theme = createTheme({
-  components: {
-    TextInput: { defaultProps: { size: "md" } },
-    PasswordInput: { defaultProps: { size: "md" } },
-    NativeSelect: { defaultProps: { size: "md" } },
-    Textarea: { defaultProps: { size: "md" } },
-  },
 });
 
 export const metadata: Metadata = {
@@ -61,12 +47,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <MantineProvider theme={theme}>
-          <AuthProvider>
-            <HeaderNav />
-            <main style={{ paddingTop: 56 }}>{children}</main>
-          </AuthProvider>
-        </MantineProvider>
+        <Providers>
+          <HeaderNav />
+          <main style={{ paddingTop: 56 }}>{children}</main>
+        </Providers>
       </body>
     </html>
   );
