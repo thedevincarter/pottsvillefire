@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenUser, isAdmin } from "@/lib/auth";
 import { updateTraining, deleteTraining, type TrainingInput } from "@/lib/trainings";
+import { errorMessage } from "@/lib/errors";
 
 export async function PATCH(
   request: NextRequest,
@@ -18,10 +19,7 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("Failed to update training:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Failed to update training" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
   }
 }
 
@@ -40,9 +38,6 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("Failed to delete training:", e);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Failed to delete training" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
   }
 }
