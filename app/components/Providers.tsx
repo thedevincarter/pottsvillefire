@@ -16,10 +16,10 @@ const calendarDefaults = {
 
 // Input-based pickers open a Popover dropdown. Rendering it inside its portal
 // (the default) places it outside any surrounding Modal's focus trap, which on
-// mobile steals focus back the instant you tap the time field and dismisses the
+// mobile steals focus back the instant you tap the field and dismisses the
 // keyboard. withinPortal: false keeps the dropdown inside the Modal's trap so
-// the time input stays focused. Our pickers all live in modals and sit at the
-// top of short forms, so there's no clipping concern.
+// the input stays focused. Our pickers all live in modals and sit at the top of
+// short forms, so there's no clipping concern.
 const inputPickerDefaults = {
   ...calendarDefaults,
   popoverProps: { withinPortal: false },
@@ -31,11 +31,12 @@ const theme = createTheme({
     PasswordInput: { defaultProps: { size: "md" } },
     NativeSelect: { defaultProps: { size: "md" } },
     Textarea: { defaultProps: { size: "md" } },
-    // App-wide date picker defaults.
+    // App-wide date picker defaults. We avoid DateTimePicker (its custom
+    // TimePicker dismisses the mobile keyboard inside modals) in favor of a
+    // DatePickerInput + native TimeInput — see components/DateTimeField.
     DatePicker: { defaultProps: calendarDefaults }, // inline calendar, no popover
     Calendar: { defaultProps: calendarDefaults },
     DatePickerInput: { defaultProps: inputPickerDefaults },
-    DateTimePicker: { defaultProps: inputPickerDefaults },
     DateInput: { defaultProps: inputPickerDefaults },
   },
 });

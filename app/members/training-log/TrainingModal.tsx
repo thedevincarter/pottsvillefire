@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { Button, Group, Modal, Stack, TagsInput, Textarea } from "@mantine/core";
-import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { CreatableSelect } from "@/app/components/CreatableSelect";
+import { DateTimeField } from "@/app/components/DateTimeField";
 import type { TrainingEntry, TrainingFormOptions } from "@/lib/trainings";
 
 dayjs.extend(utc);
@@ -75,14 +75,7 @@ export function TrainingModal({
   return (
     <Modal opened={opened} onClose={onClose} title={title} size="md">
       <Stack gap="sm">
-        <DateTimePicker
-          label="Date / Time (Central)"
-          placeholder="Select date and time"
-          value={date}
-          onChange={setDate}
-          clearable
-          valueFormat="MM/DD/YYYY HH:mm"
-        />
+        <DateTimeField value={date} onChange={setDate} />
         <CreatableSelect
           label="Training Type"
           placeholder="Select or type to create"
