@@ -35,6 +35,11 @@ function formatDate(date: string) {
   });
 }
 
+function monthKey(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function TrainingLogTable({
   initialTrainings,
   formOptions,
@@ -47,20 +52,20 @@ export function TrainingLogTable({
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editTraining, setEditTraining] = useState<TrainingEntry | null>(null);
   const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const memberName = profile?.fullName || user?.email || "";
 
   const [search, setSearch] = useState("");
-  const [selectedType, setSelectedType] = useState("all");
+  const [selectedSubGroup, setSelectedSubGroup] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
 
-  // Type filter options from the types actually present.
-  const typeOptions = [
-    { value: "all", label: "All Types" },
-    ...[...new Set(initialTrainings.map((t) => t.type).filter(Boolean))].map((t) => ({
-      value: t as string,
-      label: t as string,
-    })),
+  // Sub-group filter options from what's actually present.
+  const subGroupOptions = [
+    { value: "all", label: "All Sub-Groups" },
+    ...[...new Set(initialTrainings.flatMap((t) => t.subGroups))]
+      .sort((a, b) => a.localeCompare(b))
+      .map((g) => ({ value: g, label: g })),
   ];
 
   // Month filter options built from training dates.
@@ -68,14 +73,13 @@ export function TrainingLogTable({
     const months = new Map<string, { label: string; count: number }>();
     for (const t of initialTrainings) {
       if (!t.date) continue;
-      const d = new Date(t.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const key = monthKey(t.date);
       const existing = months.get(key);
       if (existing) {
         existing.count++;
       } else {
         months.set(key, {
-          label: d.toLocaleDateString("en-US", {
+          label: new Date(t.date).toLocaleDateString("en-US", {
             month: "long",
             year: "numeric",
             timeZone: "America/Chicago",
@@ -94,16 +98,22 @@ export function TrainingLogTable({
   })();
 
   const filteredTrainings = initialTrainings.filter((t) => {
-    if (selectedType !== "all" && t.type !== selectedType) return false;
+    if (selectedSubGroup !== "all" && !t.subGroups.includes(selectedSubGroup)) return false;
     if (selectedMonth !== "all") {
-      if (!t.date) return false;
-      const d = new Date(t.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (key !== selectedMonth) return false;
+      if (!t.date || monthKey(t.date) !== selectedMonth) return false;
     }
     if (search) {
       const term = search.toLowerCase();
-      const haystack = [t.type ?? "", ...t.attendees].join(" ").toLowerCase();
+      const haystack = [
+        ...t.subjects,
+        ...t.subGroups,
+        t.instructors ?? "",
+        t.additionalDepartments ?? "",
+        t.notes ?? "",
+        ...t.attendees,
+      ]
+        .join(" ")
+        .toLowerCase();
       if (!haystack.includes(term)) return false;
     }
     return true;
@@ -143,6 +153,34 @@ export function TrainingLogTable({
     router.refresh();
   }
 
+  async function handleDelete(t: TrainingEntry) {
+    const when = t.date ? formatDate(t.date) : "this training";
+    if (!confirm(`Delete the training from ${when}? This can't be undone.`)) return;
+    const token = await getToken();
+    if (!token) return;
+
+    setDeletingIds((prev) => new Set(prev).add(t.id));
+    try {
+      const res = await fetch(`/api/trainings/${t.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        alert("Could not delete this training.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(t.id);
+        return next;
+      });
+    }
+  }
+
+  const joinOrDash = (arr: string[]) => (arr.length > 0 ? arr.join(", ") : "-");
+
   return (
     <>
       <Box
@@ -159,18 +197,18 @@ export function TrainingLogTable({
         <Group justify="space-between" wrap="nowrap" align="flex-start">
           <Group gap="xs" wrap="wrap" style={{ flex: 1 }}>
             <TextInput
-              placeholder="Search type or attendee..."
+              placeholder="Search subject, instructor, attendee..."
               value={search}
               onChange={(e) => setSearch(e.currentTarget.value)}
               size="sm"
               style={{ flex: 1, minWidth: 160, maxWidth: 280 }}
             />
             <NativeSelect
-              data={typeOptions}
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.currentTarget.value)}
+              data={subGroupOptions}
+              value={selectedSubGroup}
+              onChange={(e) => setSelectedSubGroup(e.currentTarget.value)}
               size="sm"
-              style={{ maxWidth: 160 }}
+              style={{ maxWidth: 200 }}
             />
             <NativeSelect
               data={monthOptions}
@@ -202,18 +240,52 @@ export function TrainingLogTable({
                   <Text size="sm" fw={600}>
                     {t.date ? formatDate(t.date) : "-"}
                   </Text>
-                  {t.type && (
-                    <Badge color="blue" variant="light" size="sm">
-                      {t.type}
-                    </Badge>
-                  )}
+                  <Group gap={4} wrap="nowrap">
+                    {t.dayNight && (
+                      <Badge color="grape" variant="light" size="sm">
+                        {t.dayNight}
+                      </Badge>
+                    )}
+                    {t.automaticAid && (
+                      <Badge color="teal" variant="light" size="sm">
+                        Auto aid
+                      </Badge>
+                    )}
+                  </Group>
                 </Group>
+
+                {t.subjects.length > 0 && (
+                  <Text size="sm" fw={500}>
+                    {t.subjects.join(", ")}
+                  </Text>
+                )}
+                {t.subGroups.length > 0 && (
+                  <Text size="xs" c="dimmed">
+                    Sub-Group: {t.subGroups.join(", ")}
+                  </Text>
+                )}
+                {t.totalHours !== null && (
+                  <Text size="xs" c="dimmed">
+                    {t.totalHours} hr{t.totalHours === 1 ? "" : "s"}
+                  </Text>
+                )}
+                {t.instructors && (
+                  <Text size="xs" c="dimmed">
+                    Instructors: {t.instructors}
+                  </Text>
+                )}
+                {t.additionalDepartments && (
+                  <Text size="xs" c="dimmed">
+                    Additional Depts: {t.additionalDepartments}
+                  </Text>
+                )}
                 {t.notes && (
-                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }} mb={4}>
+                  <Text size="sm" style={{ whiteSpace: "pre-wrap" }} mt={4}>
                     {t.notes}
                   </Text>
                 )}
-                <Text size="xs" c="dimmed" mb={4}>
+
+                <Text size="xs" c="dimmed" mt={6} mb={4}>
                   {t.attendees.length} attended
                 </Text>
                 {t.attendees.length > 0 && (
@@ -230,6 +302,7 @@ export function TrainingLogTable({
                     ))}
                   </Group>
                 )}
+
                 <Group gap="xs" wrap="nowrap">
                   {(() => {
                     const attended = t.attendees.includes(memberName);
@@ -247,14 +320,26 @@ export function TrainingLogTable({
                     );
                   })()}
                   {isAdmin && (
-                    <ActionIcon
-                      variant="light"
-                      size="md"
-                      onClick={() => setEditTraining(t)}
-                      aria-label="Edit training"
-                    >
-                      {"✎"}
-                    </ActionIcon>
+                    <>
+                      <ActionIcon
+                        variant="light"
+                        size="md"
+                        onClick={() => setEditTraining(t)}
+                        aria-label="Edit training"
+                      >
+                        {"✎"}
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="md"
+                        loading={deletingIds.has(t.id)}
+                        onClick={() => handleDelete(t)}
+                        aria-label="Delete training"
+                      >
+                        {"✕"}
+                      </ActionIcon>
+                    </>
                   )}
                 </Group>
               </Card>
@@ -265,14 +350,17 @@ export function TrainingLogTable({
 
       {/* Desktop table view */}
       <Box visibleFrom="sm">
-        <Table.ScrollContainer minWidth={820}>
+        <Table.ScrollContainer minWidth={1000}>
           <Table striped highlightOnHover verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Date</Table.Th>
-                <Table.Th>Type</Table.Th>
-                <Table.Th>Notes</Table.Th>
-                <Table.Th>Attended</Table.Th>
+                <Table.Th>Subject</Table.Th>
+                <Table.Th>Sub-Group</Table.Th>
+                <Table.Th ta="center">Hours</Table.Th>
+                <Table.Th ta="center">Day/Night</Table.Th>
+                <Table.Th ta="center">Auto Aid</Table.Th>
+                <Table.Th ta="center">Attended</Table.Th>
                 <Table.Th>Members</Table.Th>
                 <Table.Th>Actions</Table.Th>
               </Table.Tr>
@@ -280,7 +368,7 @@ export function TrainingLogTable({
             <Table.Tbody>
               {filteredTrainings.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={9}>
                     <Text c="dimmed" ta="center" py="md">
                       No trainings found.
                     </Text>
@@ -292,19 +380,35 @@ export function TrainingLogTable({
                     <Table.Td style={{ whiteSpace: "nowrap" }}>
                       {t.date ? formatDate(t.date) : "-"}
                     </Table.Td>
-                    <Table.Td>
-                      {t.type ? (
-                        <Badge color="blue" variant="light" size="sm">
-                          {t.type}
-                        </Badge>
+                    <Table.Td style={{ minWidth: 180 }}>
+                      {joinOrDash(t.subjects)}
+                      {(t.instructors || t.additionalDepartments || t.notes) && (
+                        <Stack gap={0} mt={2}>
+                          {t.instructors && (
+                            <Text size="xs" c="dimmed">Instructors: {t.instructors}</Text>
+                          )}
+                          {t.additionalDepartments && (
+                            <Text size="xs" c="dimmed">Add&apos;l Depts: {t.additionalDepartments}</Text>
+                          )}
+                          {t.notes && (
+                            <Text size="xs" c="dimmed" style={{ whiteSpace: "pre-wrap" }}>
+                              {t.notes}
+                            </Text>
+                          )}
+                        </Stack>
+                      )}
+                    </Table.Td>
+                    <Table.Td>{joinOrDash(t.subGroups)}</Table.Td>
+                    <Table.Td ta="center">{t.totalHours ?? "-"}</Table.Td>
+                    <Table.Td ta="center">
+                      {t.dayNight ? (
+                        <Badge color="grape" variant="light" size="sm">{t.dayNight}</Badge>
                       ) : (
                         "-"
                       )}
                     </Table.Td>
-                    <Table.Td style={{ whiteSpace: "pre-wrap", minWidth: 200 }}>
-                      {t.notes ? t.notes : <Text size="sm" c="dimmed">-</Text>}
-                    </Table.Td>
-                    <Table.Td>{t.attendees.length}</Table.Td>
+                    <Table.Td ta="center">{t.automaticAid ? "✓" : "-"}</Table.Td>
+                    <Table.Td ta="center">{t.attendees.length}</Table.Td>
                     <Table.Td>
                       {t.attendees.length > 0 ? (
                         <Group gap={4} wrap="wrap">
@@ -320,9 +424,7 @@ export function TrainingLogTable({
                           ))}
                         </Group>
                       ) : (
-                        <Text size="sm" c="dimmed">
-                          -
-                        </Text>
+                        <Text size="sm" c="dimmed">-</Text>
                       )}
                     </Table.Td>
                     <Table.Td>
@@ -345,16 +447,30 @@ export function TrainingLogTable({
                           );
                         })()}
                         {isAdmin && (
-                          <Tooltip label="Edit training">
-                            <ActionIcon
-                              variant="light"
-                              size="sm"
-                              onClick={() => setEditTraining(t)}
-                              aria-label="Edit training"
-                            >
-                              {"✎"}
-                            </ActionIcon>
-                          </Tooltip>
+                          <>
+                            <Tooltip label="Edit training">
+                              <ActionIcon
+                                variant="light"
+                                size="sm"
+                                onClick={() => setEditTraining(t)}
+                                aria-label="Edit training"
+                              >
+                                {"✎"}
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="Delete training">
+                              <ActionIcon
+                                variant="subtle"
+                                color="red"
+                                size="sm"
+                                loading={deletingIds.has(t.id)}
+                                onClick={() => handleDelete(t)}
+                                aria-label="Delete training"
+                              >
+                                {"✕"}
+                              </ActionIcon>
+                            </Tooltip>
+                          </>
                         )}
                       </Group>
                     </Table.Td>

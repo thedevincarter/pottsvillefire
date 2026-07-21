@@ -1,11 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Group, Modal, Stack, TagsInput, Textarea } from "@mantine/core";
+import {
+  Button,
+  Checkbox,
+  Group,
+  Modal,
+  NumberInput,
+  Radio,
+  Stack,
+  TagsInput,
+  Textarea,
+  TextInput,
+} from "@mantine/core";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { CreatableSelect } from "@/app/components/CreatableSelect";
 import { DateTimeField } from "@/app/components/DateTimeField";
 import type { TrainingEntry, TrainingFormOptions } from "@/lib/trainings";
 
@@ -13,6 +23,15 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const TZ = "America/Chicago";
+
+// Central date <-> ISO helpers, matching what DateTimeField keeps in state.
+function toDateString(isoDate: string): string {
+  return dayjs.tz(isoDate, TZ).format("YYYY-MM-DD HH:mm:ss");
+}
+
+function toISOCentral(dateStr: string): string {
+  return dayjs.tz(dateStr, TZ).format("YYYY-MM-DDTHH:mm:ssZ");
+}
 
 type Props = {
   opened: boolean;
@@ -22,16 +41,6 @@ type Props = {
   initialData?: TrainingEntry;
   options: TrainingFormOptions;
 };
-
-function toDateString(isoDate: string | null): string | null {
-  if (!isoDate) return null;
-  return dayjs.tz(isoDate, TZ).format("YYYY-MM-DD HH:mm:ss");
-}
-
-function toISOCentral(dateStr: string | null): string {
-  if (!dateStr) return "";
-  return dayjs.tz(dateStr, TZ).format("YYYY-MM-DDTHH:mm:ssZ");
-}
 
 export function TrainingModal({
   opened,
@@ -43,7 +52,13 @@ export function TrainingModal({
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [date, setDate] = useState<string | null>(null);
-  const [type, setType] = useState<string | null>(null);
+  const [totalHours, setTotalHours] = useState<number | string>("");
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [automaticAid, setAutomaticAid] = useState(false);
+  const [dayNight, setDayNight] = useState<string | null>(null);
+  const [subGroups, setSubGroups] = useState<string[]>([]);
+  const [instructors, setInstructors] = useState("");
+  const [additionalDepartments, setAdditionalDepartments] = useState("");
   const [notes, setNotes] = useState("");
   const [attendees, setAttendees] = useState<string[]>([]);
 
@@ -51,8 +66,14 @@ export function TrainingModal({
   // editing, otherwise start blank. (Same pattern as the run-log modal.)
   useEffect(() => {
     if (!opened) return;
-    setDate(toDateString(initialData?.date ?? null));
-    setType(initialData?.type ?? null);
+    setDate(initialData?.date ? toDateString(initialData.date) : null);
+    setTotalHours(initialData?.totalHours ?? "");
+    setSubjects(initialData?.subjects ?? []);
+    setAutomaticAid(initialData?.automaticAid ?? false);
+    setDayNight(initialData?.dayNight ?? null);
+    setSubGroups(initialData?.subGroups ?? []);
+    setInstructors(initialData?.instructors ?? "");
+    setAdditionalDepartments(initialData?.additionalDepartments ?? "");
     setNotes(initialData?.notes ?? "");
     setAttendees(initialData?.attendees ?? []);
   }, [opened, initialData]);
@@ -61,8 +82,14 @@ export function TrainingModal({
     setSaving(true);
     try {
       await onSave({
-        date: toISOCentral(date),
-        type: type ?? "",
+        date: date ? toISOCentral(date) : "",
+        totalHours: totalHours === "" ? null : totalHours,
+        subjects,
+        automaticAid,
+        dayNight,
+        subGroups,
+        instructors,
+        additionalDepartments,
         notes,
         attendees,
       });
@@ -76,13 +103,54 @@ export function TrainingModal({
     <Modal opened={opened} onClose={onClose} title={title} size="md">
       <Stack gap="sm">
         <DateTimeField value={date} onChange={setDate} />
-        <CreatableSelect
-          label="Training Type"
-          placeholder="Select or type to create"
-          data={options.types}
-          value={type}
-          onChange={setType}
+        <NumberInput
+          label="Total Hours"
+          placeholder="0"
+          value={totalHours}
+          onChange={setTotalHours}
+          min={0}
+          step={0.5}
+          decimalScale={2}
+          allowNegative={false}
+        />
+        <TagsInput
+          label="Subject"
+          placeholder="Select or type to add"
+          data={options.subjects}
+          value={subjects}
+          onChange={setSubjects}
           clearable
+        />
+        <Checkbox
+          label="Automatic aid"
+          checked={automaticAid}
+          onChange={(e) => setAutomaticAid(e.currentTarget.checked)}
+        />
+        <Radio.Group label="Day / Night" value={dayNight} onChange={setDayNight}>
+          <Group gap="lg" mt={4}>
+            <Radio value="Day" label="Day" />
+            <Radio value="Night" label="Night" />
+          </Group>
+        </Radio.Group>
+        <TagsInput
+          label="Sub-Group"
+          placeholder="Select or type to add"
+          data={options.subGroups}
+          value={subGroups}
+          onChange={setSubGroups}
+          clearable
+        />
+        <TextInput
+          label="Instructors"
+          placeholder="Names of instructors"
+          value={instructors}
+          onChange={(e) => setInstructors(e.currentTarget.value)}
+        />
+        <TextInput
+          label="Additional Departments"
+          placeholder="Other departments involved"
+          value={additionalDepartments}
+          onChange={(e) => setAdditionalDepartments(e.currentTarget.value)}
         />
         <TagsInput
           label="Members Attended"
