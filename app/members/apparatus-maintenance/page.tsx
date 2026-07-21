@@ -1,7 +1,8 @@
 import { Container, Title, Text } from "@mantine/core";
 import { getApparatus } from "@/lib/apparatus";
 import { getMaintenanceLogs } from "@/lib/maintenance";
-import { ApparatusMaintenanceList } from "./ApparatusMaintenanceList";
+import { getApparatusRequests } from "@/lib/maintenance-requests";
+import { ApparatusMaintenanceView } from "./ApparatusMaintenanceView";
 
 export const dynamic = "force-dynamic";
 
@@ -10,18 +11,19 @@ export const metadata = {
 };
 
 export default async function ApparatusMaintenancePage() {
-  const [logs, apparatus] = await Promise.all([
+  const [logs, apparatus, requests] = await Promise.all([
     getMaintenanceLogs(),
     getApparatus(),
+    getApparatusRequests(),
   ]);
 
   return (
     <Container size="lg" pt="xl">
       <Title mb="xs">Apparatus Maintenance</Title>
       <Text c="dimmed" mb="xl">
-        Log and search maintenance and repairs performed on apparatus.
+        Submit maintenance requests and log work performed on apparatus.
       </Text>
-      <ApparatusMaintenanceList logs={logs} apparatus={apparatus} />
+      <ApparatusMaintenanceView logs={logs} apparatus={apparatus} requests={requests} />
     </Container>
   );
 }

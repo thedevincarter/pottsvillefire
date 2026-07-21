@@ -1,0 +1,28 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getTokenUser, displayName } from "@/lib/auth";
+import { createStationLog } from "@/lib/station-maintenance";
+import { STATIONS } from "@/lib/stations";
+import { errorMessage } from "@/lib/errors";
+
+export async function POST(request: NextRequest) {
+  const user = await getTokenUser(request);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { station, workDone } = await request.json();
+  if (!station || !workDone?.trim()) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+  if (!STATIONS.some((s) => s.value === station)) {
+    return NextResponse.json({ error: "Unknown station" }, { status: 400 });
+  }
+
+  try {
+    const id = await createStationLog(station, workDone.trim(), displayName(user));
+    return NextResponse.json({ id });
+  } catch (e) {
+    console.error("Failed to create station log:", e);
+    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+  }
+}

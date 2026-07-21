@@ -23,6 +23,7 @@ const memberSubLinks = [
   { link: "/members/training-log", label: "Training Log" },
   { link: "/members/apparatus-checks", label: "Apparatus Checks" },
   { link: "/members/apparatus-maintenance", label: "Apparatus Maintenance" },
+  { link: "/members/station-maintenance", label: "Station Maintenance" },
   { link: "/members/roster", label: "Roster" },
   { link: "/members/charts", label: "Analytics" },
 ];
