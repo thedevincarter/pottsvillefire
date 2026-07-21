@@ -281,7 +281,7 @@ export function MembersRunLogTable({
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                initialRuns.map((run) => {
+                filteredRuns.map((run) => {
                   const hasResponded = run.respondedMembers.includes(memberName);
                   return (
                     <Table.Tr key={run.id}>
