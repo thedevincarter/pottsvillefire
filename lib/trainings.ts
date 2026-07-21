@@ -179,8 +179,15 @@ export async function updateTraining(trainingId: string, data: TrainingInput) {
   }
 }
 
-// Admin: remove a training. Attendee rows cascade via FK.
+// Admin: remove a training. Delete attendee rows first so this works even if
+// the training_attendees FK isn't ON DELETE CASCADE in the database.
 export async function deleteTraining(trainingId: string) {
+  const { error: attendeesError } = await supabase
+    .from("training_attendees")
+    .delete()
+    .eq("training_id", trainingId);
+  if (attendeesError) throw attendeesError;
+
   const { error } = await supabase.from("trainings").delete().eq("id", trainingId);
   if (error) throw error;
 }

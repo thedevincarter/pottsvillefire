@@ -27,6 +27,14 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  await deleteTraining(id);
-  return NextResponse.json({ ok: true });
+  try {
+    await deleteTraining(id);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("Failed to delete training:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Failed to delete training" },
+      { status: 500 }
+    );
+  }
 }
