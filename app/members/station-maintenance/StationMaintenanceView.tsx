@@ -15,11 +15,15 @@ export function StationMaintenanceView({
   requests: MaintenanceRequest[];
 }) {
   return (
-    <Tabs defaultValue="requests">
+    <Tabs defaultValue="log">
       <Tabs.List mb="md">
-        <Tabs.Tab value="requests">Requests</Tabs.Tab>
         <Tabs.Tab value="log">Work Log</Tabs.Tab>
+        <Tabs.Tab value="requests">Requests</Tabs.Tab>
       </Tabs.List>
+
+      <Tabs.Panel value="log">
+        <StationMaintenanceList logs={logs} />
+      </Tabs.Panel>
 
       <Tabs.Panel value="requests">
         <MaintenanceRequestsPanel
@@ -28,10 +32,6 @@ export function StationMaintenanceView({
           targetOptions={STATIONS}
           targetField="station"
         />
-      </Tabs.Panel>
-
-      <Tabs.Panel value="log">
-        <StationMaintenanceList logs={logs} />
       </Tabs.Panel>
     </Tabs>
   );

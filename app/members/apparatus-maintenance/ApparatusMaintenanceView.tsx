@@ -19,11 +19,15 @@ export function ApparatusMaintenanceView({
   const apparatusOptions = apparatus.map((a) => ({ value: a.id, label: a.name }));
 
   return (
-    <Tabs defaultValue="requests">
+    <Tabs defaultValue="log">
       <Tabs.List mb="md">
-        <Tabs.Tab value="requests">Requests</Tabs.Tab>
         <Tabs.Tab value="log">Work Log</Tabs.Tab>
+        <Tabs.Tab value="requests">Requests</Tabs.Tab>
       </Tabs.List>
+
+      <Tabs.Panel value="log">
+        <ApparatusMaintenanceList logs={logs} apparatus={apparatus} />
+      </Tabs.Panel>
 
       <Tabs.Panel value="requests">
         <MaintenanceRequestsPanel
@@ -32,10 +36,6 @@ export function ApparatusMaintenanceView({
           targetOptions={apparatusOptions}
           targetField="apparatusId"
         />
-      </Tabs.Panel>
-
-      <Tabs.Panel value="log">
-        <ApparatusMaintenanceList logs={logs} apparatus={apparatus} />
       </Tabs.Panel>
     </Tabs>
   );
