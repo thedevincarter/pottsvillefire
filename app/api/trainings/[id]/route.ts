@@ -13,8 +13,16 @@ export async function PATCH(
 
   const { id } = await params;
   const data: TrainingInput = await request.json();
-  await updateTraining(id, data);
-  return NextResponse.json({ ok: true });
+  try {
+    await updateTraining(id, data);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("Failed to update training:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Failed to update training" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(

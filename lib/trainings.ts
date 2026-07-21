@@ -137,11 +137,19 @@ export async function getTrainings(): Promise<TrainingEntry[]> {
   }));
 }
 
+// NumberInput can hand back a string, but total_hours is a numeric column, so
+// coerce to a finite number or null before inserting.
+function toNumberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 // Maps the API input to database columns. Shared by create and update.
 function toRow(data: TrainingInput) {
   return {
     date: data.date || null,
-    total_hours: data.totalHours ?? null,
+    total_hours: toNumberOrNull(data.totalHours),
     subjects: data.subjects ?? [],
     automatic_aid: data.automaticAid ?? false,
     day_night: data.dayNight || null,

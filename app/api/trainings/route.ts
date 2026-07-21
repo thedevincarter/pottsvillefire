@@ -9,6 +9,14 @@ export async function POST(request: NextRequest) {
   }
 
   const data: TrainingInput = await request.json();
-  await createTraining(data);
-  return NextResponse.json({ ok: true });
+  try {
+    await createTraining(data);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error("Failed to create training:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Failed to create training" },
+      { status: 500 }
+    );
+  }
 }

@@ -145,11 +145,16 @@ export function TrainingLogTable({
 
     const url = id ? `/api/trainings/${id}` : "/api/trainings";
     const method = id ? "PATCH" : "POST";
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(body.error ?? "Could not save this training.");
+      return;
+    }
     router.refresh();
   }
 
