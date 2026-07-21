@@ -20,11 +20,8 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
-import {
-  REQUEST_STATUSES,
-  type MaintenanceRequest,
-  type RequestStatus,
-} from "@/lib/maintenance-requests";
+import { REQUEST_STATUSES, type RequestStatus } from "@/lib/maintenance-request-status";
+import type { MaintenanceRequest } from "@/lib/maintenance-requests";
 import { RequestModal } from "./RequestModal";
 
 function formatDate(iso: string) {

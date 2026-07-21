@@ -1,17 +1,10 @@
 import { supabase } from "./supabase";
 import { stationLabel } from "./stations";
+import type { RequestStatus } from "./maintenance-request-status";
 
-export type RequestStatus = "unresolved" | "resolved" | "wont_do";
-
-export const REQUEST_STATUSES: { value: RequestStatus; label: string; color: string }[] = [
-  { value: "unresolved", label: "Unresolved", color: "orange" },
-  { value: "resolved", label: "Resolved", color: "green" },
-  { value: "wont_do", label: "Won't Do", color: "gray" },
-];
-
-export function isRequestStatus(value: unknown): value is RequestStatus {
-  return value === "unresolved" || value === "resolved" || value === "wont_do";
-}
+// Re-exported for server-side consumers that already import from this module.
+export { REQUEST_STATUSES, isRequestStatus } from "./maintenance-request-status";
+export type { RequestStatus } from "./maintenance-request-status";
 
 export type MaintenanceRequest = {
   id: string;
