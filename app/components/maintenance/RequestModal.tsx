@@ -10,6 +10,8 @@ type Props = {
   title: string;
   targetLabel: string; // "Apparatus" | "Station"
   targetOptions: { value: string; label: string }[];
+  initialData?: { targetValue: string | null; description: string };
+  submitLabel?: string;
 };
 
 export function RequestModal({
@@ -19,6 +21,8 @@ export function RequestModal({
   title,
   targetLabel,
   targetOptions,
+  initialData,
+  submitLabel = "Submit",
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [targetValue, setTargetValue] = useState<string | null>(null);
@@ -26,9 +30,9 @@ export function RequestModal({
 
   useEffect(() => {
     if (!opened) return;
-    setTargetValue(null);
-    setDescription("");
-  }, [opened]);
+    setTargetValue(initialData?.targetValue ?? null);
+    setDescription(initialData?.description ?? "");
+  }, [opened, initialData]);
 
   const canSave = !!targetValue && description.trim().length > 0;
 
@@ -69,7 +73,7 @@ export function RequestModal({
             Cancel
           </Button>
           <Button color="red" onClick={handleSubmit} loading={saving} disabled={!canSave}>
-            Submit
+            {submitLabel}
           </Button>
         </Group>
       </Stack>

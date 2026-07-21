@@ -61,6 +61,7 @@ export function MaintenanceRequestsPanel({
   const { user, profile, isAdmin, getToken } = useAuth();
   const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
+  const [editRequest, setEditRequest] = useState<MaintenanceRequest | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [targetFilter, setTargetFilter] = useState("all");
@@ -109,6 +110,22 @@ export function MaintenanceRequestsPanel({
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       alert(body.error ?? "Could not submit this request.");
+      return;
+    }
+    router.refresh();
+  }
+
+  async function handleUpdate(id: string, targetValue: string, description: string) {
+    const token = await getToken();
+    if (!token) return;
+    const res = await fetch(`/api/maintenance-requests/${id}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ [targetField]: targetValue, description }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      alert(body.error ?? "Could not save this request.");
       return;
     }
     router.refresh();
@@ -225,15 +242,25 @@ export function MaintenanceRequestsPanel({
                     {formatDate(r.createdAt)} · {r.memberName}
                   </Text>
                   {canManage(r) && (
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      size="sm"
-                      onClick={() => handleDelete(r)}
-                      aria-label="Delete request"
-                    >
-                      {"✕"}
-                    </ActionIcon>
+                    <Group gap={4} wrap="nowrap">
+                      <ActionIcon
+                        variant="light"
+                        size="sm"
+                        onClick={() => setEditRequest(r)}
+                        aria-label="Edit request"
+                      >
+                        {"✎"}
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        color="red"
+                        size="sm"
+                        onClick={() => handleDelete(r)}
+                        aria-label="Delete request"
+                      >
+                        {"✕"}
+                      </ActionIcon>
+                    </Group>
                   )}
                 </Group>
               </Card>
@@ -285,17 +312,29 @@ export function MaintenanceRequestsPanel({
                     </Table.Td>
                     <Table.Td>
                       {canManage(r) && (
-                        <Tooltip label="Delete request">
-                          <ActionIcon
-                            variant="subtle"
-                            color="red"
-                            size="sm"
-                            onClick={() => handleDelete(r)}
-                            aria-label="Delete request"
-                          >
-                            {"✕"}
-                          </ActionIcon>
-                        </Tooltip>
+                        <Group gap={4} wrap="nowrap">
+                          <Tooltip label="Edit request">
+                            <ActionIcon
+                              variant="light"
+                              size="sm"
+                              onClick={() => setEditRequest(r)}
+                              aria-label="Edit request"
+                            >
+                              {"✎"}
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Delete request">
+                            <ActionIcon
+                              variant="subtle"
+                              color="red"
+                              size="sm"
+                              onClick={() => handleDelete(r)}
+                              aria-label="Delete request"
+                            >
+                              {"✕"}
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
                       )}
                     </Table.Td>
                   </Table.Tr>
@@ -313,6 +352,23 @@ export function MaintenanceRequestsPanel({
         title={`New ${targetLabel} Request`}
         targetLabel={targetLabel}
         targetOptions={targetOptions}
+      />
+
+      <RequestModal
+        opened={!!editRequest}
+        onClose={() => setEditRequest(null)}
+        onSave={({ targetValue, description }) => {
+          if (editRequest) return handleUpdate(editRequest.id, targetValue, description);
+        }}
+        title={`Edit ${targetLabel} Request`}
+        targetLabel={targetLabel}
+        targetOptions={targetOptions}
+        initialData={
+          editRequest
+            ? { targetValue: targetValueOf(editRequest), description: editRequest.description }
+            : undefined
+        }
+        submitLabel="Save"
       />
     </>
   );

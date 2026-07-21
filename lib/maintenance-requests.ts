@@ -99,6 +99,24 @@ export async function createStationRequest(
   return data.id;
 }
 
+// Submitter or admin: edit a request's target and description. Only the target
+// column matching the request's domain is passed, so the apparatus-XOR-station
+// invariant is preserved.
+export async function updateRequest(
+  id: string,
+  fields: { apparatusId?: string; station?: string; description: string }
+) {
+  const update: Record<string, unknown> = { description: fields.description };
+  if (fields.apparatusId !== undefined) update.apparatus_id = fields.apparatusId;
+  if (fields.station !== undefined) update.station = fields.station;
+
+  const { error } = await supabase
+    .from("maintenance_requests")
+    .update(update)
+    .eq("id", id);
+  if (error) throw error;
+}
+
 // Admin: set a request's status. resolved_at/by are stamped for resolved and
 // won't-do, and cleared when it goes back to unresolved.
 export async function updateRequestStatus(
