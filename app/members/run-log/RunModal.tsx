@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Group, Modal, Stack, TagsInput, TextInput } from "@mantine/core";
+import { Button, Group, Modal, MultiSelect, Stack, TextInput } from "@mantine/core";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -113,12 +113,13 @@ export function RunModal({
           onChange={setMutualAid}
           clearable
         />
-        <TagsInput
+        <MultiSelect
           label="Responding Members"
-          placeholder="Select or add members"
-          data={options.memberNames}
+          placeholder="Select members"
+          data={[...new Set([...options.memberNames, ...respondingMembers])]}
           value={respondingMembers}
           onChange={setRespondingMembers}
+          searchable={false}
           clearable
         />
         <Group justify="flex-end" mt="md">

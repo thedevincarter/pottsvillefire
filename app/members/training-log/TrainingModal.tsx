@@ -6,6 +6,7 @@ import {
   Checkbox,
   Group,
   Modal,
+  MultiSelect,
   NumberInput,
   Radio,
   Stack,
@@ -152,12 +153,13 @@ export function TrainingModal({
           value={additionalDepartments}
           onChange={(e) => setAdditionalDepartments(e.currentTarget.value)}
         />
-        <TagsInput
+        <MultiSelect
           label="Members Attended"
-          placeholder="Select or add members"
-          data={options.memberNames}
+          placeholder="Select members"
+          data={[...new Set([...options.memberNames, ...attendees])]}
           value={attendees}
           onChange={setAttendees}
+          searchable={false}
           clearable
         />
         <Textarea
