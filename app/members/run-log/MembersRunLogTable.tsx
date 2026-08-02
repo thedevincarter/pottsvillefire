@@ -49,9 +49,11 @@ function formatDate(date: string) {
 export function MembersRunLogTable({
   initialRuns,
   formOptions,
+  initialMonth = "all",
 }: {
   initialRuns: RunLogEntry[];
   formOptions: RunFormOptions;
+  initialMonth?: string;
 }) {
   const { user, profile, isAdmin, getToken } = useAuth();
   const router = useRouter();
@@ -59,7 +61,7 @@ export function MembersRunLogTable({
   const [editRun, setEditRun] = useState<RunLogEntry | null>(null);
   const [respondingIds, setRespondingIds] = useState<Set<string>>(new Set());
 
-  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedMonth, setSelectedMonth] = useState(initialMonth);
 
   const memberName = profile?.fullName || user?.email || "";
 
@@ -89,14 +91,20 @@ export function MembersRunLogTable({
     ];
   })();
 
+  // A ?month= from the URL may name a month with no runs; fall back rather than
+  // leaving the select showing a value it doesn't have.
+  const month = monthOptions.some((o) => o.value === selectedMonth)
+    ? selectedMonth
+    : "all";
+
   const filteredRuns =
-    selectedMonth === "all"
+    month === "all"
       ? initialRuns
       : initialRuns.filter((run) => {
           if (!run.date) return false;
           const d = new Date(run.date);
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          return key === selectedMonth;
+          return key === month;
         });
 
   async function handleRespond(runId: string) {
@@ -156,16 +164,26 @@ export function MembersRunLogTable({
         <Group justify="space-between">
           <NativeSelect
             data={monthOptions}
-            value={selectedMonth}
+            value={month}
             onChange={(e) => setSelectedMonth(e.currentTarget.value)}
             size="sm"
             style={{ flex: 1, maxWidth: 220 }}
           />
-          {isAdmin && (
-            <Button onClick={openAdd} color="red" size="sm">
-              Add Run
+          <Group gap="xs">
+            <Button
+              component={Link}
+              href={`/members/run-log/export?month=${month}`}
+              variant="default"
+              size="sm"
+            >
+              Export
             </Button>
-          )}
+            {isAdmin && (
+              <Button onClick={openAdd} color="red" size="sm">
+                Add Run
+              </Button>
+            )}
+          </Group>
         </Group>
       </Box>
 

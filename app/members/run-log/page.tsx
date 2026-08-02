@@ -8,10 +8,15 @@ export const metadata = {
   title: "Members Run Log | Pottsville Fire",
 };
 
-export default async function MembersRunLogPage() {
-  const [runs, formOptions] = await Promise.all([
+export default async function MembersRunLogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
+  const [runs, formOptions, { month }] = await Promise.all([
     getRunLog(),
     getRunFormOptions(),
+    searchParams,
   ]);
 
   return (
@@ -20,7 +25,11 @@ export default async function MembersRunLogPage() {
       <Text c="dimmed" mb="xl">
         View and manage incident records.
       </Text>
-      <MembersRunLogTable initialRuns={runs} formOptions={formOptions} />
+      <MembersRunLogTable
+        initialRuns={runs}
+        formOptions={formOptions}
+        initialMonth={month ?? "all"}
+      />
     </Container>
   );
 }

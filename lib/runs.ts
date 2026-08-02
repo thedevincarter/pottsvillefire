@@ -48,6 +48,17 @@ export async function getRunFormOptions(): Promise<RunFormOptions> {
   return { callTypes, complaints, mutualAidDepts, memberNames: memberRows };
 }
 
+/** Roster names in alphabetical order, used for the run log export columns. */
+export async function getRosterNames(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .order("full_name");
+
+  if (error) throw error;
+  return (data ?? []).map((p) => p.full_name).filter(Boolean);
+}
+
 export async function getRunLog(): Promise<RunLogEntry[]> {
   const { data: runs, error } = await supabase
     .from("runs")
