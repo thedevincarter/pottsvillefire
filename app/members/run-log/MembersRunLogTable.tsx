@@ -60,6 +60,7 @@ export function MembersRunLogTable({
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editRun, setEditRun] = useState<RunLogEntry | null>(null);
   const [respondingIds, setRespondingIds] = useState<Set<string>>(new Set());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
 
@@ -128,6 +129,40 @@ export function MembersRunLogTable({
         next.delete(runId);
         return next;
       });
+    }
+  }
+
+  async function handleDelete(run: RunLogEntry) {
+    const label = run.date ? formatDate(run.date) : "this run";
+    const responses = run.respondedMembers.length;
+    if (
+      !confirm(
+        `Delete the ${run.complaint ?? "run"} on ${label}?` +
+          (responses > 0
+            ? ` ${responses} member response${responses !== 1 ? "s" : ""} will be removed too.`
+            : "") +
+          " This can't be undone."
+      )
+    ) {
+      return;
+    }
+
+    const token = await getToken();
+    if (!token) return;
+
+    setDeletingId(run.id);
+    try {
+      const res = await fetch(`/api/runs/${run.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        alert("Could not delete this run.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -257,14 +292,26 @@ export function MembersRunLogTable({
                       {hasResponded ? "✓ Responded" : "Mark as Responded"}
                     </Button>
                     {isAdmin && (
-                      <ActionIcon
-                        variant="light"
-                        size="md"
-                        onClick={() => setEditRun(run)}
-                        aria-label="Edit run"
-                      >
-                        {"\u270E"}
-                      </ActionIcon>
+                      <>
+                        <ActionIcon
+                          variant="light"
+                          size="md"
+                          onClick={() => setEditRun(run)}
+                          aria-label="Edit run"
+                        >
+                          {"\u270E"}
+                        </ActionIcon>
+                        <ActionIcon
+                          variant="light"
+                          color="red"
+                          size="md"
+                          loading={deletingId === run.id}
+                          onClick={() => handleDelete(run)}
+                          aria-label="Delete run"
+                        >
+                          {"\u2715"}
+                        </ActionIcon>
+                      </>
                     )}
                   </Group>
                 </Card>
@@ -363,16 +410,30 @@ export function MembersRunLogTable({
                             </ActionIcon>
                           </Tooltip>
                           {isAdmin && (
-                            <Tooltip label="Edit run">
-                              <ActionIcon
-                                variant="light"
-                                size="sm"
-                                onClick={() => setEditRun(run)}
-                                aria-label="Edit run"
-                              >
-                                {"\u270E"}
-                              </ActionIcon>
-                            </Tooltip>
+                            <>
+                              <Tooltip label="Edit run">
+                                <ActionIcon
+                                  variant="light"
+                                  size="sm"
+                                  onClick={() => setEditRun(run)}
+                                  aria-label="Edit run"
+                                >
+                                  {"\u270E"}
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label="Delete run">
+                                <ActionIcon
+                                  variant="light"
+                                  color="red"
+                                  size="sm"
+                                  loading={deletingId === run.id}
+                                  onClick={() => handleDelete(run)}
+                                  aria-label="Delete run"
+                                >
+                                  {"\u2715"}
+                                </ActionIcon>
+                              </Tooltip>
+                            </>
                           )}
                         </Group>
                       </Table.Td>

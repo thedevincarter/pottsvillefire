@@ -119,6 +119,12 @@ export async function updateRun(runId: string, data: RunLogInput) {
   }
 }
 
+// Admin: remove a run outright. Its run_responses cascade-delete via FK.
+export async function deleteRun(runId: string) {
+  const { error } = await supabase.from("runs").delete().eq("id", runId);
+  if (error) throw error;
+}
+
 async function syncRespondingMembers(runId: string, memberNames: string[]) {
   // Remove all existing responses for this run
   await supabase.from("run_responses").delete().eq("run_id", runId);
