@@ -129,9 +129,6 @@ export function RunExportView({ monthKey, monthLabel, runs, members }: Props) {
                     <Table.Td>{run.complaint ?? ""}</Table.Td>
                     <Table.Td>{run.address ?? ""}</Table.Td>
                     <Table.Td>{run.mutualAid ?? ""}</Table.Td>
-                    <Table.Td className={classes.center}>
-                      {run.respondedMembers.length}
-                    </Table.Td>
                     {columns.map((name) => (
                       <Table.Td key={name} className={classes.mark}>
                         {responded.has(name) ? RESPONDED_MARK : ""}
@@ -143,11 +140,8 @@ export function RunExportView({ monthKey, monthLabel, runs, members }: Props) {
             </Table.Tbody>
             <Table.Tfoot className={classes.totals}>
               <Table.Tr>
-                <Table.Th colSpan={6} className={classes.nowrap}>
+                <Table.Th colSpan={DETAIL_HEADERS.length} className={classes.nowrap}>
                   Totals
-                </Table.Th>
-                <Table.Th className={classes.center}>
-                  {runs.reduce((sum, run) => sum + run.respondedMembers.length, 0)}
                 </Table.Th>
                 {columns.map((name) => (
                   <Table.Th key={name} className={classes.center}>

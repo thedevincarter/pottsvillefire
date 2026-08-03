@@ -12,7 +12,6 @@ export const DETAIL_HEADERS = [
   "Complaint",
   "Address",
   "Mutual Aid",
-  "# Responded",
 ];
 
 export function formatRunDate(date: string | null): string {
@@ -85,7 +84,6 @@ export function buildExportRows(
       run.complaint ?? "",
       run.address ?? "",
       run.mutualAid ?? "",
-      String(run.respondedMembers.length),
       ...members.map((m) => (responded.has(m) ? RESPONDED_MARK : "")),
     ];
   });
@@ -97,7 +95,6 @@ export function buildExportRows(
     "",
     "",
     "",
-    String(runs.reduce((sum, run) => sum + run.respondedMembers.length, 0)),
     ...members.map((m) => String(respondedCount(runs, m))),
   ];
 
