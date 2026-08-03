@@ -2,8 +2,8 @@ import type { RunLogEntry } from "./runs";
 
 const TZ = "America/Chicago";
 
+// Responses are marked; a blank cell means the member didn't go on that call.
 export const RESPONDED_MARK = "✓";
-export const NOT_RESPONDED_MARK = "✗";
 
 export const DETAIL_HEADERS = [
   "Date",
@@ -86,7 +86,7 @@ export function buildExportRows(
       run.address ?? "",
       run.mutualAid ?? "",
       String(run.respondedMembers.length),
-      ...members.map((m) => (responded.has(m) ? RESPONDED_MARK : NOT_RESPONDED_MARK)),
+      ...members.map((m) => (responded.has(m) ? RESPONDED_MARK : "")),
     ];
   });
 

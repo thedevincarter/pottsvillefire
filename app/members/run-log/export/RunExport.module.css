@@ -34,19 +34,11 @@
   font-weight: 600;
 }
 
-.yes,
-.no {
+.mark {
   text-align: center;
   padding: 4px 2px;
-}
-
-.yes {
   color: var(--mantine-color-green-7);
   font-weight: 700;
-}
-
-.no {
-  color: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-2));
 }
 
 .totals th {
@@ -105,12 +97,8 @@
     background: transparent !important;
   }
 
-  .yes {
+  .mark {
     color: #000;
-  }
-
-  .no {
-    color: #888;
   }
 
   .memberHead {

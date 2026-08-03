@@ -14,7 +14,6 @@ import {
 import type { RunLogEntry } from "@/lib/runs";
 import {
   DETAIL_HEADERS,
-  NOT_RESPONDED_MARK,
   RESPONDED_MARK,
   buildExportRows,
   exportFileName,
@@ -134,13 +133,8 @@ export function RunExportView({ monthKey, monthLabel, runs, members }: Props) {
                       {run.respondedMembers.length}
                     </Table.Td>
                     {columns.map((name) => (
-                      <Table.Td
-                        key={name}
-                        className={
-                          responded.has(name) ? classes.yes : classes.no
-                        }
-                      >
-                        {responded.has(name) ? RESPONDED_MARK : NOT_RESPONDED_MARK}
+                      <Table.Td key={name} className={classes.mark}>
+                        {responded.has(name) ? RESPONDED_MARK : ""}
                       </Table.Td>
                     ))}
                   </Table.Tr>
