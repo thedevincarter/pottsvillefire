@@ -1,4 +1,5 @@
 import { Container } from "@mantine/core";
+import { AdminRoute } from "@/app/components/auth/AdminRoute";
 import { getRunLog, getRosterNames } from "@/lib/runs";
 import { monthLabel, sortRunsForExport } from "@/lib/run-export";
 import { RunExportView } from "./RunExportView";
@@ -40,13 +41,15 @@ export default async function RunLogExportPage({
   const members = [...roster, ...extraResponders.sort()];
 
   return (
-    <Container size="xl" pt="xl" pb="xl">
-      <RunExportView
-        monthKey={monthKey}
-        monthLabel={monthLabel(monthKey)}
-        runs={monthRuns}
-        members={members}
-      />
-    </Container>
+    <AdminRoute>
+      <Container size="xl" pt="xl" pb="xl">
+        <RunExportView
+          monthKey={monthKey}
+          monthLabel={monthLabel(monthKey)}
+          runs={monthRuns}
+          members={members}
+        />
+      </Container>
+    </AdminRoute>
   );
 }

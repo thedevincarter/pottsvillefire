@@ -61,7 +61,9 @@
     margin: 0.4in;
   }
 
-  .controls {
+  .controls,
+  /* Totals are for the on-screen review pass; the printed sheet stays raw. */
+  .totals {
     display: none;
   }
 

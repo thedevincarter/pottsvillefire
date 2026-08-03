@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Alert,
@@ -16,30 +17,12 @@ import {
 } from "@mantine/core";
 import { useAuth } from "@/app/components/auth/AuthProvider";
 import type { ApparatusCheck, CheckResult } from "@/lib/apparatus";
+import { groupResults } from "@/lib/check-results";
 
 function formatMonth(month: string) {
   const [year, m] = month.split("-");
   const d = new Date(Number(year), Number(m) - 1);
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-}
-
-// Results arrive ordered with each header's subitems directly after it, so
-// grouping consecutive runs by parent is enough to rebuild the sections.
-function groupResults(results: CheckResult[]) {
-  const groups: { key: string; header: string | null; items: CheckResult[] }[] = [];
-  for (const result of results) {
-    const last = groups[groups.length - 1];
-    if (last && last.key === (result.parentId ?? "__top")) {
-      last.items.push(result);
-    } else {
-      groups.push({
-        key: result.parentId ?? "__top",
-        header: result.parentId ? result.parentLabel : null,
-        items: [result],
-      });
-    }
-  }
-  return groups;
 }
 
 export function CheckForm({ check }: { check: ApparatusCheck }) {
@@ -375,6 +358,17 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
             Cancel Check
           </Button>
         </>
+      )}
+
+      {isCompleted && isAdmin && (
+        <Button
+          component={Link}
+          href={`/members/apparatus-checks/${check.id}/print`}
+          variant="light"
+          fullWidth
+        >
+          Print Checklist
+        </Button>
       )}
 
       {isCompleted && isAdmin && (

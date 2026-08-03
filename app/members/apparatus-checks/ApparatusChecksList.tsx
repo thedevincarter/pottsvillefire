@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ActionIcon,
@@ -436,9 +437,22 @@ export function ApparatusChecksList({
                       )}
                     </Box>
                     {isChecked ? (
-                      <Badge color="green" variant="light" size="lg">
-                        Complete
-                      </Badge>
+                      <Group gap="xs" wrap="nowrap">
+                        <Badge color="green" variant="light" size="lg">
+                          Complete
+                        </Badge>
+                        {isAdmin && (
+                          <Button
+                            component={Link}
+                            href={`/members/apparatus-checks/${mc.checkId}/print`}
+                            size="compact-sm"
+                            variant="light"
+                            color="gray"
+                          >
+                            Print
+                          </Button>
+                        )}
+                      </Group>
                     ) : inProgress ? (
                       <Button
                         size="compact-sm"
@@ -536,6 +550,19 @@ export function ApparatusChecksList({
                               {failCount > 0 && <Badge color="red" variant="light" size="xs">{failCount} fail</Badge>}
                             </Group>
                           )}
+                          {isAdmin && h.completedAt && (
+                            <Button
+                              component={Link}
+                              href={`/members/apparatus-checks/${h.id}/print`}
+                              size="compact-xs"
+                              variant="light"
+                              color="gray"
+                              mt="xs"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Print
+                            </Button>
+                          )}
                         </Card>
                       );
                     })}
@@ -552,6 +579,7 @@ export function ApparatusChecksList({
                         <Table.Th>Checked By</Table.Th>
                         <Table.Th>Results</Table.Th>
                         <Table.Th>Status</Table.Th>
+                        {isAdmin && <Table.Th />}
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
@@ -582,6 +610,22 @@ export function ApparatusChecksList({
                                 {h.completedAt ? "Complete" : "In Progress"}
                               </Badge>
                             </Table.Td>
+                            {isAdmin && (
+                              <Table.Td>
+                                {h.completedAt && (
+                                  <Button
+                                    component={Link}
+                                    href={`/members/apparatus-checks/${h.id}/print`}
+                                    size="compact-xs"
+                                    variant="light"
+                                    color="gray"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Print
+                                  </Button>
+                                )}
+                              </Table.Td>
+                            )}
                           </Table.Tr>
                         );
                       })}

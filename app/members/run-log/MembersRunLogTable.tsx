@@ -169,21 +169,21 @@ export function MembersRunLogTable({
             size="sm"
             style={{ flex: 1, maxWidth: 220 }}
           />
-          <Group gap="xs">
-            <Button
-              component={Link}
-              href={`/members/run-log/export?month=${month}`}
-              variant="default"
-              size="sm"
-            >
-              Export
-            </Button>
-            {isAdmin && (
+          {isAdmin && (
+            <Group gap="xs">
+              <Button
+                component={Link}
+                href={`/members/run-log/export?month=${month}`}
+                variant="default"
+                size="sm"
+              >
+                Export
+              </Button>
               <Button onClick={openAdd} color="red" size="sm">
                 Add Run
               </Button>
-            )}
-          </Group>
+            </Group>
+          )}
         </Group>
       </Box>
 
