@@ -10,12 +10,14 @@ import {
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { isOfficerRank } from "@/lib/ranks";
 
 export type Profile = {
   id: string;
   email: string;
   fullName: string;
   role: string;
+  rank: string | null;
   phone: string | null;
 };
 
@@ -24,6 +26,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
+  isOfficer: boolean;
   login: (email: string, password: string) => Promise<string | null>;
   logout: () => Promise<void>;
   getToken: () => Promise<string | null>;
@@ -34,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   isAdmin: false,
+  isOfficer: false,
   login: async () => null,
   logout: async () => {},
   getToken: async () => null,
@@ -56,6 +60,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     email: data.email,
     fullName: data.full_name,
     role: data.role,
+    rank: data.rank ?? null,
     phone: data.phone,
   };
 }
@@ -110,9 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isAdmin = profile?.role === "admin";
+  // Officers can triage maintenance requests alongside admins.
+  const isOfficer = isAdmin || isOfficerRank(profile?.rank);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, login, logout, getToken }}>
+    <AuthContext.Provider
+      value={{ user, profile, loading, isAdmin, isOfficer, login, logout, getToken }}
+    >
       {children}
     </AuthContext.Provider>
   );

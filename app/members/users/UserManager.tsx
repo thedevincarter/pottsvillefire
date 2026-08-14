@@ -17,6 +17,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
+import { RANKS } from "@/lib/ranks";
 
 type UserStatus = "invited" | "active" | "disabled";
 
@@ -54,12 +55,7 @@ function formatLastLogin(value: string | null) {
 
 const rankOptions = [
   { value: "", label: "Select rank" },
-  { value: "Chief", label: "Chief" },
-  { value: "Assistant Chief", label: "Assistant Chief" },
-  { value: "Captain", label: "Captain" },
-  { value: "Lieutenant", label: "Lieutenant" },
-  { value: "Firefighter", label: "Firefighter" },
-  { value: "Proby", label: "Proby" },
+  ...RANKS.map((r) => ({ value: r, label: r })),
 ];
 
 export function UserManager() {

@@ -50,6 +50,7 @@ type Props = {
   targetLabel: string; // "Apparatus" | "Station"
   targetOptions: { value: string; label: string }[];
   targetField: "apparatusId" | "station";
+  memberNames: string[];
 };
 
 export function MaintenanceRequestsPanel({
@@ -57,8 +58,9 @@ export function MaintenanceRequestsPanel({
   targetLabel,
   targetOptions,
   targetField,
+  memberNames,
 }: Props) {
-  const { user, profile, isAdmin, getToken } = useAuth();
+  const { user, profile, isAdmin, isOfficer, getToken } = useAuth();
   const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editRequest, setEditRequest] = useState<MaintenanceRequest | null>(null);
@@ -90,7 +92,7 @@ export function MaintenanceRequestsPanel({
       if (targetFilter !== "all" && targetValueOf(r) !== targetFilter) return false;
       if (search) {
         const term = search.toLowerCase();
-        const haystack = [targetNameOf(r), r.description, r.memberName]
+        const haystack = [targetNameOf(r), r.description, r.memberName, r.assignedTo ?? ""]
           .join(" ")
           .toLowerCase();
         if (!haystack.includes(term)) return false;
@@ -151,6 +153,26 @@ export function MaintenanceRequestsPanel({
     }
   }
 
+  async function handleAssign(id: string, assignedTo: string) {
+    const token = await getToken();
+    if (!token) return;
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/maintenance-requests/${id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedTo: assignedTo || null }),
+      });
+      if (!res.ok) {
+        alert("Could not update the assignment.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function handleDelete(r: MaintenanceRequest) {
     if (!confirm(`Delete this request for ${targetNameOf(r)}? This can't be undone.`)) return;
     const token = await getToken();
@@ -171,8 +193,10 @@ export function MaintenanceRequestsPanel({
     }
   }
 
+  // Officers (lieutenant and up) and admins triage requests; everyone else
+  // sees the same information read-only.
   const statusControl = (r: MaintenanceRequest) =>
-    isAdmin ? (
+    isOfficer ? (
       <NativeSelect
         size="xs"
         value={r.status}
@@ -185,6 +209,32 @@ export function MaintenanceRequestsPanel({
       <Badge color={statusMeta(r.status).color} variant="light" size="sm">
         {statusMeta(r.status).label}
       </Badge>
+    );
+
+  // An assignee who has since left the roster still shows in their own row so
+  // the select doesn't silently blank out the current assignment.
+  const assigneeOptions = (r: MaintenanceRequest) => [
+    { value: "", label: "Unassigned" },
+    ...[...new Set([...memberNames, ...(r.assignedTo ? [r.assignedTo] : [])])].map((n) => ({
+      value: n,
+      label: n,
+    })),
+  ];
+
+  const assigneeControl = (r: MaintenanceRequest) =>
+    isOfficer ? (
+      <NativeSelect
+        size="xs"
+        value={r.assignedTo ?? ""}
+        disabled={busyId === r.id}
+        onChange={(e) => handleAssign(r.id, e.currentTarget.value)}
+        data={assigneeOptions(r)}
+        style={{ maxWidth: 170 }}
+      />
+    ) : (
+      <Text size="sm" c={r.assignedTo ? undefined : "dimmed"}>
+        {r.assignedTo ?? "Unassigned"}
+      </Text>
     );
 
   return (
@@ -237,6 +287,12 @@ export function MaintenanceRequestsPanel({
                 <Text size="sm" style={{ whiteSpace: "pre-wrap" }} mb={6}>
                   {r.description}
                 </Text>
+                <Group gap="xs" wrap="nowrap" align="center" mb={6}>
+                  <Text size="xs" c="dimmed">
+                    Assigned to
+                  </Text>
+                  {assigneeControl(r)}
+                </Group>
                 <Group justify="space-between" wrap="nowrap">
                   <Text size="xs" c="dimmed">
                     {formatDate(r.createdAt)} · {r.memberName}
@@ -271,7 +327,7 @@ export function MaintenanceRequestsPanel({
 
       {/* Desktop table */}
       <Box visibleFrom="sm">
-        <Table.ScrollContainer minWidth={760}>
+        <Table.ScrollContainer minWidth={900}>
           <Table striped highlightOnHover verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
@@ -279,6 +335,7 @@ export function MaintenanceRequestsPanel({
                 <Table.Th>{targetLabel}</Table.Th>
                 <Table.Th>Issue</Table.Th>
                 <Table.Th>Status</Table.Th>
+                <Table.Th>Assigned To</Table.Th>
                 <Table.Th>Submitted By</Table.Th>
                 <Table.Th>Actions</Table.Th>
               </Table.Tr>
@@ -286,7 +343,7 @@ export function MaintenanceRequestsPanel({
             <Table.Tbody>
               {filtered.length === 0 ? (
                 <Table.Tr>
-                  <Table.Td colSpan={6}>
+                  <Table.Td colSpan={7}>
                     <Text c="dimmed" ta="center" py="md">
                       No requests found.
                     </Text>
@@ -301,6 +358,7 @@ export function MaintenanceRequestsPanel({
                       {r.description}
                     </Table.Td>
                     <Table.Td>{statusControl(r)}</Table.Td>
+                    <Table.Td>{assigneeControl(r)}</Table.Td>
                     <Table.Td>
                       <Anchor
                         component={Link}

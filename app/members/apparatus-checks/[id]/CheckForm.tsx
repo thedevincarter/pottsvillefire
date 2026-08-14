@@ -294,26 +294,42 @@ export function CheckForm({ check }: { check: ApparatusCheck }) {
                         />
                       )}
                     </Box>
-                    <Group gap={4} wrap="nowrap" mt={2}>
-                      <Button
-                        size="compact-sm"
-                        variant={result.status === "pass" ? "filled" : "light"}
-                        color="green"
-                        onClick={() => handleStatus(result, "pass")}
-                        disabled={readOnly}
+                    {/* Read-only answers show just the outcome — a pair of
+                        greyed-out buttons makes pass and fail hard to tell
+                        apart at a glance. */}
+                    {readOnly && result.status ? (
+                      <Badge
+                        color={result.status === "pass" ? "green" : "red"}
+                        variant="filled"
+                        size="lg"
+                        mt={2}
                       >
-                        Pass
-                      </Button>
-                      <Button
-                        size="compact-sm"
-                        variant={result.status === "fail" ? "filled" : "light"}
-                        color="red"
-                        onClick={() => handleStatus(result, "fail")}
-                        disabled={readOnly}
-                      >
-                        Fail
-                      </Button>
-                    </Group>
+                        {result.status === "pass" ? "Pass" : "Fail"}
+                      </Badge>
+                    ) : readOnly ? (
+                      <Text size="sm" c="dimmed" mt={4} style={{ whiteSpace: "nowrap" }}>
+                        Not checked
+                      </Text>
+                    ) : (
+                      <Group gap={4} wrap="nowrap" mt={2}>
+                        <Button
+                          size="compact-sm"
+                          variant={result.status === "pass" ? "filled" : "light"}
+                          color="green"
+                          onClick={() => handleStatus(result, "pass")}
+                        >
+                          Pass
+                        </Button>
+                        <Button
+                          size="compact-sm"
+                          variant={result.status === "fail" ? "filled" : "light"}
+                          color="red"
+                          onClick={() => handleStatus(result, "fail")}
+                        >
+                          Fail
+                        </Button>
+                      </Group>
+                    )}
                   </Group>
                 </Card>
               ))}

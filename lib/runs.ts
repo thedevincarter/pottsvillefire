@@ -59,6 +59,18 @@ export async function getRosterNames(): Promise<string[]> {
   return (data ?? []).map((p) => p.full_name).filter(Boolean);
 }
 
+/** Whether a name belongs to someone on the roster — for validating assignments. */
+export async function isRosterName(name: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("full_name", name)
+    .limit(1);
+
+  if (error) throw error;
+  return (data ?? []).length > 0;
+}
+
 export async function getRunLog(): Promise<RunLogEntry[]> {
   const { data: runs, error } = await supabase
     .from("runs")

@@ -10,20 +10,18 @@ import { StationMaintenanceList } from "./StationMaintenanceList";
 export function StationMaintenanceView({
   logs,
   requests,
+  memberNames,
 }: {
   logs: StationMaintenanceLog[];
   requests: MaintenanceRequest[];
+  memberNames: string[];
 }) {
   return (
-    <Tabs defaultValue="log">
+    <Tabs defaultValue="requests">
       <Tabs.List mb="md">
-        <Tabs.Tab value="log">Work Log</Tabs.Tab>
         <Tabs.Tab value="requests">Requests</Tabs.Tab>
+        <Tabs.Tab value="log">Work Log</Tabs.Tab>
       </Tabs.List>
-
-      <Tabs.Panel value="log">
-        <StationMaintenanceList logs={logs} />
-      </Tabs.Panel>
 
       <Tabs.Panel value="requests">
         <MaintenanceRequestsPanel
@@ -31,7 +29,12 @@ export function StationMaintenanceView({
           targetLabel="Station"
           targetOptions={STATIONS}
           targetField="station"
+          memberNames={memberNames}
         />
+      </Tabs.Panel>
+
+      <Tabs.Panel value="log">
+        <StationMaintenanceList logs={logs} />
       </Tabs.Panel>
     </Tabs>
   );

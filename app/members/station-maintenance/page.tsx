@@ -1,6 +1,7 @@
 import { Container, Title, Text } from "@mantine/core";
 import { getStationLogs } from "@/lib/station-maintenance";
 import { getStationRequests } from "@/lib/maintenance-requests";
+import { getRosterNames } from "@/lib/runs";
 import { StationMaintenanceView } from "./StationMaintenanceView";
 
 export const dynamic = "force-dynamic";
@@ -10,9 +11,10 @@ export const metadata = {
 };
 
 export default async function StationMaintenancePage() {
-  const [logs, requests] = await Promise.all([
+  const [logs, requests, memberNames] = await Promise.all([
     getStationLogs(),
     getStationRequests(),
+    getRosterNames(),
   ]);
 
   return (
@@ -21,7 +23,7 @@ export default async function StationMaintenancePage() {
       <Text c="dimmed" mb="xl">
         Submit maintenance requests and log work performed at the stations.
       </Text>
-      <StationMaintenanceView logs={logs} requests={requests} />
+      <StationMaintenanceView logs={logs} requests={requests} memberNames={memberNames} />
     </Container>
   );
 }

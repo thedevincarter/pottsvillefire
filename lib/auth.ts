@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import { supabase } from "./supabase";
+import { isOfficerRank } from "./ranks";
 
 export type TokenUser = {
   id: string;
   email: string;
   role: string;
+  rank: string | null;
   fullName: string | null;
 };
 
@@ -26,7 +28,7 @@ export async function getTokenUser(request: NextRequest): Promise<TokenUser | nu
   // disabled user's unexpired token still passes above. Check it ourselves.
   const [{ data: authUser }, { data: profile }] = await Promise.all([
     supabase.auth.admin.getUserById(user.id),
-    supabase.from("profiles").select("role, full_name").eq("id", user.id).single(),
+    supabase.from("profiles").select("role, rank, full_name").eq("id", user.id).single(),
   ]);
 
   const bannedUntil = authUser?.user?.banned_until;
@@ -36,10 +38,16 @@ export async function getTokenUser(request: NextRequest): Promise<TokenUser | nu
     id: user.id,
     email: user.email ?? "",
     role: profile?.role ?? "member",
+    rank: profile?.rank ?? null,
     fullName: profile?.full_name ?? null,
   };
 }
 
 export function isAdmin(user: TokenUser): boolean {
   return user.role === "admin";
+}
+
+// Officers and admins triage maintenance requests: change status, reassign.
+export function isOfficer(user: TokenUser): boolean {
+  return isAdmin(user) || isOfficerRank(user.rank);
 }

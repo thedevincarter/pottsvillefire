@@ -11,23 +11,21 @@ export function ApparatusMaintenanceView({
   logs,
   apparatus,
   requests,
+  memberNames,
 }: {
   logs: MaintenanceLog[];
   apparatus: Apparatus[];
   requests: MaintenanceRequest[];
+  memberNames: string[];
 }) {
   const apparatusOptions = apparatus.map((a) => ({ value: a.id, label: a.name }));
 
   return (
-    <Tabs defaultValue="log">
+    <Tabs defaultValue="requests">
       <Tabs.List mb="md">
-        <Tabs.Tab value="log">Work Log</Tabs.Tab>
         <Tabs.Tab value="requests">Requests</Tabs.Tab>
+        <Tabs.Tab value="log">Work Log</Tabs.Tab>
       </Tabs.List>
-
-      <Tabs.Panel value="log">
-        <ApparatusMaintenanceList logs={logs} apparatus={apparatus} />
-      </Tabs.Panel>
 
       <Tabs.Panel value="requests">
         <MaintenanceRequestsPanel
@@ -35,7 +33,12 @@ export function ApparatusMaintenanceView({
           targetLabel="Apparatus"
           targetOptions={apparatusOptions}
           targetField="apparatusId"
+          memberNames={memberNames}
         />
+      </Tabs.Panel>
+
+      <Tabs.Panel value="log">
+        <ApparatusMaintenanceList logs={logs} apparatus={apparatus} />
       </Tabs.Panel>
     </Tabs>
   );

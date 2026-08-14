@@ -6,6 +6,11 @@ import type { RequestStatus } from "./maintenance-request-status";
 export { REQUEST_STATUSES, isRequestStatus } from "./maintenance-request-status";
 export type { RequestStatus } from "./maintenance-request-status";
 
+// Who new requests land on until an officer reassigns them. Spelled to match
+// profiles.full_name exactly — assignments are validated against the roster,
+// and that row reads "Ryan Mccarty".
+export const DEFAULT_ASSIGNEE = "Ryan Mccarty";
+
 export type MaintenanceRequest = {
   id: string;
   apparatusId: string | null;
@@ -15,6 +20,7 @@ export type MaintenanceRequest = {
   description: string;
   status: RequestStatus;
   memberName: string;
+  assignedTo: string | null;
   createdAt: string;
   resolvedAt: string | null;
   resolvedBy: string | null;
@@ -31,6 +37,7 @@ function mapRow(d: any): MaintenanceRequest {
     description: d.description,
     status: d.status,
     memberName: d.member_name,
+    assignedTo: d.assigned_to ?? null,
     createdAt: d.created_at,
     resolvedAt: d.resolved_at,
     resolvedBy: d.resolved_by,
@@ -78,7 +85,12 @@ export async function createApparatusRequest(
 ): Promise<string> {
   const { data, error } = await supabase
     .from("maintenance_requests")
-    .insert({ apparatus_id: apparatusId, description, member_name: memberName })
+    .insert({
+      apparatus_id: apparatusId,
+      description,
+      member_name: memberName,
+      assigned_to: DEFAULT_ASSIGNEE,
+    })
     .select("id")
     .single();
   if (error) throw error;
@@ -92,7 +104,12 @@ export async function createStationRequest(
 ): Promise<string> {
   const { data, error } = await supabase
     .from("maintenance_requests")
-    .insert({ station, description, member_name: memberName })
+    .insert({
+      station,
+      description,
+      member_name: memberName,
+      assigned_to: DEFAULT_ASSIGNEE,
+    })
     .select("id")
     .single();
   if (error) throw error;
@@ -117,8 +134,17 @@ export async function updateRequest(
   if (error) throw error;
 }
 
-// Admin: set a request's status. resolved_at/by are stamped for resolved and
-// won't-do, and cleared when it goes back to unresolved.
+// Officer or admin: hand a request to another member, or clear the assignment.
+export async function updateRequestAssignment(id: string, assignedTo: string | null) {
+  const { error } = await supabase
+    .from("maintenance_requests")
+    .update({ assigned_to: assignedTo })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+// Officer or admin: set a request's status. resolved_at/by are stamped for
+// resolved and won't-do, and cleared when it goes back to unresolved.
 export async function updateRequestStatus(
   id: string,
   status: RequestStatus,
