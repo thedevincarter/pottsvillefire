@@ -16,6 +16,11 @@ export function StationMaintenanceView({
   requests: MaintenanceRequest[];
   memberNames: string[];
 }) {
+  // Resolved requests are finished work, so they live in the work log. Anything
+  // still open — including won't-do — stays in the Requests tab.
+  const resolvedRequests = requests.filter((r) => r.status === "resolved");
+  const openRequests = requests.filter((r) => r.status !== "resolved");
+
   return (
     <Tabs defaultValue="requests">
       <Tabs.List mb="md">
@@ -25,7 +30,7 @@ export function StationMaintenanceView({
 
       <Tabs.Panel value="requests">
         <MaintenanceRequestsPanel
-          requests={requests}
+          requests={openRequests}
           targetLabel="Station"
           targetOptions={STATIONS}
           targetField="station"
@@ -34,7 +39,7 @@ export function StationMaintenanceView({
       </Tabs.Panel>
 
       <Tabs.Panel value="log">
-        <StationMaintenanceList logs={logs} />
+        <StationMaintenanceList logs={logs} resolvedRequests={resolvedRequests} />
       </Tabs.Panel>
     </Tabs>
   );

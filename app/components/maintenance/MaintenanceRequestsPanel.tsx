@@ -77,9 +77,15 @@ export function MaintenanceRequestsPanel({
   const targetNameOf = (r: MaintenanceRequest) =>
     (targetField === "apparatusId" ? r.apparatusName : r.stationName) ?? "-";
 
+  // Resolved requests render in the work log, not here, so filtering to them
+  // would only ever come back empty. Resolving one from the dropdown below
+  // still works — the row just moves to the other tab.
   const statusFilterOptions = [
     { value: "all", label: "All Statuses" },
-    ...REQUEST_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+    ...REQUEST_STATUSES.filter((s) => s.value !== "resolved").map((s) => ({
+      value: s.value,
+      label: s.label,
+    })),
   ];
   const targetFilterOptions = [
     { value: "all", label: `All ${targetLabel}` },

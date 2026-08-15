@@ -20,6 +20,11 @@ export function ApparatusMaintenanceView({
 }) {
   const apparatusOptions = apparatus.map((a) => ({ value: a.id, label: a.name }));
 
+  // Resolved requests are finished work, so they live in the work log. Anything
+  // still open — including won't-do — stays in the Requests tab.
+  const resolvedRequests = requests.filter((r) => r.status === "resolved");
+  const openRequests = requests.filter((r) => r.status !== "resolved");
+
   return (
     <Tabs defaultValue="requests">
       <Tabs.List mb="md">
@@ -29,7 +34,7 @@ export function ApparatusMaintenanceView({
 
       <Tabs.Panel value="requests">
         <MaintenanceRequestsPanel
-          requests={requests}
+          requests={openRequests}
           targetLabel="Apparatus"
           targetOptions={apparatusOptions}
           targetField="apparatusId"
@@ -38,7 +43,11 @@ export function ApparatusMaintenanceView({
       </Tabs.Panel>
 
       <Tabs.Panel value="log">
-        <ApparatusMaintenanceList logs={logs} apparatus={apparatus} />
+        <ApparatusMaintenanceList
+          logs={logs}
+          apparatus={apparatus}
+          resolvedRequests={resolvedRequests}
+        />
       </Tabs.Panel>
     </Tabs>
   );

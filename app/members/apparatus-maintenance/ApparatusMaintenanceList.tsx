@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import {
   ActionIcon,
   Anchor,
+  Badge,
   Box,
   Button,
   Card,
@@ -21,6 +22,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
 import type { Apparatus } from "@/lib/apparatus";
 import type { MaintenanceLog } from "@/lib/maintenance";
+import type { MaintenanceRequest } from "@/lib/maintenance-requests";
 import { MaintenanceModal } from "./MaintenanceModal";
 
 function formatDate(iso: string) {
@@ -39,18 +41,33 @@ function formatMileage(mileage: number | null) {
   return mileage === null ? "-" : `${mileage.toLocaleString("en-US")} mi`;
 }
 
+// Who the work log credits for a closed-out request: whoever marked it
+// resolved, falling back to the assignee and then the submitter.
+function creditedTo(r: MaintenanceRequest) {
+  return r.resolvedBy ?? r.assignedTo ?? r.memberName;
+}
+
+// The work log interleaves hand-written logs with requests that have been
+// resolved — both are work that got done, so they read as one history.
+type Row =
+  | { kind: "log"; id: string; date: string; log: MaintenanceLog }
+  | { kind: "request"; id: string; date: string; request: MaintenanceRequest };
+
 export function ApparatusMaintenanceList({
   logs,
   apparatus,
+  resolvedRequests,
 }: {
   logs: MaintenanceLog[];
   apparatus: Apparatus[];
+  resolvedRequests: MaintenanceRequest[];
 }) {
-  const { user, profile, isAdmin, getToken } = useAuth();
+  const { user, profile, isAdmin, isOfficer, getToken } = useAuth();
   const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editLog, setEditLog] = useState<MaintenanceLog | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reopeningId, setReopeningId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [apparatusFilter, setApparatusFilter] = useState("all");
 
@@ -63,20 +80,31 @@ export function ApparatusMaintenanceList({
     ...apparatusOptions,
   ];
 
-  const filteredLogs = logs.filter((log) => {
-    if (apparatusFilter !== "all" && log.apparatusId !== apparatusFilter) return false;
-    if (search) {
-      const term = search.toLowerCase();
-      const haystack = [
-        log.apparatusName,
-        log.memberName,
-        log.workDone,
-        log.mileage?.toString() ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      if (!haystack.includes(term)) return false;
-    }
+  const rows: Row[] = [
+    ...logs.map((log) => ({ kind: "log" as const, id: log.id, date: log.createdAt, log })),
+    ...resolvedRequests.map((request) => ({
+      kind: "request" as const,
+      id: request.id,
+      // Sort resolved requests by when the work was finished, not filed.
+      date: request.resolvedAt ?? request.createdAt,
+      request,
+    })),
+  ].sort((a, b) => b.date.localeCompare(a.date));
+
+  const filteredLogs = rows.filter((row) => {
+    const apparatusId = row.kind === "log" ? row.log.apparatusId : row.request.apparatusId;
+    const haystack =
+      row.kind === "log"
+        ? [
+            row.log.apparatusName,
+            row.log.memberName,
+            row.log.workDone,
+            row.log.mileage?.toString() ?? "",
+          ]
+        : [row.request.apparatusName ?? "", creditedTo(row.request), row.request.description];
+
+    if (apparatusFilter !== "all" && apparatusId !== apparatusFilter) return false;
+    if (search && !haystack.join(" ").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -92,6 +120,27 @@ export function ApparatusMaintenanceList({
       body: JSON.stringify(data),
     });
     router.refresh();
+  }
+
+  // Reopening sends the request back to the Requests tab.
+  async function handleReopen(request: MaintenanceRequest) {
+    const token = await getToken();
+    if (!token) return;
+    setReopeningId(request.id);
+    try {
+      const res = await fetch(`/api/maintenance-requests/${request.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "unresolved" }),
+      });
+      if (!res.ok) {
+        alert("Could not reopen this request.");
+        return;
+      }
+      router.refresh();
+    } finally {
+      setReopeningId(null);
+    }
   }
 
   async function handleDelete(log: MaintenanceLog) {
@@ -161,29 +210,36 @@ export function ApparatusMaintenanceList({
           </Text>
         ) : (
           <Stack gap="sm">
-            {filteredLogs.map((log) => (
-              <Card key={log.id} withBorder padding="sm" radius="md">
+            {filteredLogs.map((row) => (
+              <Card key={row.id} withBorder padding="sm" radius="md">
                 <Group justify="space-between" mb={4} wrap="nowrap">
                   <Text size="sm" fw={600}>
-                    {log.apparatusName}
+                    {row.kind === "log" ? row.log.apparatusName : row.request.apparatusName}
                   </Text>
-                  <Text size="xs" c="dimmed">
-                    {formatMileage(log.mileage)}
-                  </Text>
+                  {row.kind === "log" ? (
+                    <Text size="xs" c="dimmed">
+                      {formatMileage(row.log.mileage)}
+                    </Text>
+                  ) : (
+                    <Badge color="blue" variant="light" size="sm">
+                      Request
+                    </Badge>
+                  )}
                 </Group>
                 <Text size="sm" style={{ whiteSpace: "pre-wrap" }} mb={6}>
-                  {log.workDone}
+                  {row.kind === "log" ? row.log.workDone : row.request.description}
                 </Text>
                 <Group justify="space-between" wrap="nowrap">
                   <Text size="xs" c="dimmed">
-                    {formatDate(log.createdAt)} · {log.memberName}
+                    {formatDate(row.date)} ·{" "}
+                    {row.kind === "log" ? row.log.memberName : creditedTo(row.request)}
                   </Text>
-                  {canManage(log) && (
+                  {row.kind === "log" && canManage(row.log) && (
                     <Group gap={4} wrap="nowrap">
                       <ActionIcon
                         variant="light"
                         size="sm"
-                        onClick={() => setEditLog(log)}
+                        onClick={() => setEditLog(row.log)}
                         aria-label="Edit log"
                       >
                         {"✎"}
@@ -192,13 +248,23 @@ export function ApparatusMaintenanceList({
                         variant="subtle"
                         color="red"
                         size="sm"
-                        loading={deletingId === log.id}
-                        onClick={() => handleDelete(log)}
+                        loading={deletingId === row.id}
+                        onClick={() => handleDelete(row.log)}
                         aria-label="Delete log"
                       >
                         {"✕"}
                       </ActionIcon>
                     </Group>
+                  )}
+                  {row.kind === "request" && isOfficer && (
+                    <Button
+                      variant="subtle"
+                      size="compact-xs"
+                      loading={reopeningId === row.id}
+                      onClick={() => handleReopen(row.request)}
+                    >
+                      Reopen
+                    </Button>
                   )}
                 </Group>
               </Card>
@@ -231,35 +297,46 @@ export function ApparatusMaintenanceList({
                   </Table.Td>
                 </Table.Tr>
               ) : (
-                filteredLogs.map((log) => (
-                  <Table.Tr key={log.id}>
-                    <Table.Td style={{ whiteSpace: "nowrap" }}>
-                      {formatDate(log.createdAt)}
+                filteredLogs.map((row) => (
+                  <Table.Tr key={row.id}>
+                    <Table.Td style={{ whiteSpace: "nowrap" }}>{formatDate(row.date)}</Table.Td>
+                    <Table.Td>
+                      {row.kind === "log" ? row.log.apparatusName : row.request.apparatusName}
                     </Table.Td>
-                    <Table.Td>{log.apparatusName}</Table.Td>
                     <Table.Td style={{ whiteSpace: "nowrap" }}>
-                      {formatMileage(log.mileage)}
+                      {row.kind === "log" ? formatMileage(row.log.mileage) : "-"}
                     </Table.Td>
                     <Table.Td style={{ whiteSpace: "pre-wrap", minWidth: 240 }}>
-                      {log.workDone}
+                      <Group gap="xs" wrap="nowrap" align="flex-start">
+                        <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                          {row.kind === "log" ? row.log.workDone : row.request.description}
+                        </Text>
+                        {row.kind === "request" && (
+                          <Badge color="blue" variant="light" size="sm">
+                            Request
+                          </Badge>
+                        )}
+                      </Group>
                     </Table.Td>
                     <Table.Td>
                       <Anchor
                         component={Link}
-                        href={`/members/profile/${encodeURIComponent(log.memberName)}`}
+                        href={`/members/profile/${encodeURIComponent(
+                          row.kind === "log" ? row.log.memberName : creditedTo(row.request)
+                        )}`}
                         size="sm"
                       >
-                        {log.memberName}
+                        {row.kind === "log" ? row.log.memberName : creditedTo(row.request)}
                       </Anchor>
                     </Table.Td>
                     <Table.Td>
-                      {canManage(log) && (
+                      {row.kind === "log" && canManage(row.log) && (
                         <Group gap={4} wrap="nowrap">
                           <Tooltip label="Edit log">
                             <ActionIcon
                               variant="light"
                               size="sm"
-                              onClick={() => setEditLog(log)}
+                              onClick={() => setEditLog(row.log)}
                               aria-label="Edit log"
                             >
                               {"✎"}
@@ -270,14 +347,26 @@ export function ApparatusMaintenanceList({
                               variant="subtle"
                               color="red"
                               size="sm"
-                              loading={deletingId === log.id}
-                              onClick={() => handleDelete(log)}
+                              loading={deletingId === row.id}
+                              onClick={() => handleDelete(row.log)}
                               aria-label="Delete log"
                             >
                               {"✕"}
                             </ActionIcon>
                           </Tooltip>
                         </Group>
+                      )}
+                      {row.kind === "request" && isOfficer && (
+                        <Tooltip label="Send back to the Requests tab">
+                          <Button
+                            variant="subtle"
+                            size="compact-xs"
+                            loading={reopeningId === row.id}
+                            onClick={() => handleReopen(row.request)}
+                          >
+                            Reopen
+                          </Button>
+                        </Tooltip>
                       )}
                     </Table.Td>
                   </Table.Tr>
