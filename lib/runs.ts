@@ -59,6 +59,21 @@ export async function getRosterNames(): Promise<string[]> {
   return (data ?? []).map((p) => p.full_name).filter(Boolean);
 }
 
+/** A run's date, for month-lock checks. Null if the run or its date is missing. */
+export async function getRunDate(runId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("runs")
+    .select("date")
+    .eq("id", runId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+  return data.date ?? null;
+}
+
 /** Whether a name belongs to someone on the roster — for validating assignments. */
 export async function isRosterName(name: string): Promise<boolean> {
   const { data, error } = await supabase

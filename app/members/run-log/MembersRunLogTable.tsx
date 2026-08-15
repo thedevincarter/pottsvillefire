@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ActionIcon,
+  Alert,
   Anchor,
   Badge,
   Box,
@@ -20,6 +21,8 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
 import type { RunLogEntry, RunFormOptions } from "@/lib/runs";
+import type { LockedMonth } from "@/lib/run-locks";
+import { monthKey, monthLabel } from "@/lib/month";
 import { RunModal } from "./RunModal";
 
 const callTypeColors: Record<string, string> = {
@@ -49,10 +52,12 @@ function formatDate(date: string) {
 export function MembersRunLogTable({
   initialRuns,
   formOptions,
+  lockedMonths,
   initialMonth = "all",
 }: {
   initialRuns: RunLogEntry[];
   formOptions: RunFormOptions;
+  lockedMonths: LockedMonth[];
   initialMonth?: string;
 }) {
   const { user, profile, isAdmin, getToken } = useAuth();
@@ -61,33 +66,30 @@ export function MembersRunLogTable({
   const [editRun, setEditRun] = useState<RunLogEntry | null>(null);
   const [respondingIds, setRespondingIds] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [lockBusy, setLockBusy] = useState(false);
 
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
 
   const memberName = profile?.fullName || user?.email || "";
 
+  const lockedByMonth = new Map(lockedMonths.map((l) => [l.month, l]));
+  // A run with no date can't belong to a month, so it can't be locked.
+  const lockOf = (run: RunLogEntry) =>
+    run.date ? lockedByMonth.get(monthKey(run.date)) : undefined;
+
   // Build month options from run dates
   const monthOptions = (() => {
-    const months = new Map<string, { label: string; count: number }>();
+    const months = new Map<string, number>();
     for (const run of initialRuns) {
       if (!run.date) continue;
-      const d = new Date(run.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const existing = months.get(key);
-      if (existing) {
-        existing.count++;
-      } else {
-        months.set(key, {
-          label: d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "America/Chicago" }),
-          count: 1,
-        });
-      }
+      const key = monthKey(run.date);
+      months.set(key, (months.get(key) ?? 0) + 1);
     }
     return [
       { value: "all", label: `All Months (${initialRuns.length})` },
-      ...[...months.entries()].map(([value, { label, count }]) => ({
+      ...[...months.entries()].map(([value, count]) => ({
         value,
-        label: `${label} (${count})`,
+        label: `${monthLabel(value)} (${count})${lockedByMonth.has(value) ? " 🔒" : ""}`,
       })),
     ];
   })();
@@ -101,12 +103,11 @@ export function MembersRunLogTable({
   const filteredRuns =
     month === "all"
       ? initialRuns
-      : initialRuns.filter((run) => {
-          if (!run.date) return false;
-          const d = new Date(run.date);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          return key === month;
-        });
+      : initialRuns.filter((run) => run.date && monthKey(run.date) === month);
+
+  // The lock on the month currently being viewed, if any. "All Months" has no
+  // single lock state, so the admin control only appears on a real month.
+  const selectedLock = month === "all" ? undefined : lockedByMonth.get(month);
 
   async function handleRespond(runId: string) {
     const token = await getToken();
@@ -114,7 +115,7 @@ export function MembersRunLogTable({
 
     setRespondingIds((prev) => new Set(prev).add(runId));
     try {
-      await fetch(`/api/runs/${runId}/respond`, {
+      const res = await fetch(`/api/runs/${runId}/respond`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -122,6 +123,11 @@ export function MembersRunLogTable({
         },
         body: JSON.stringify({ memberName }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error ?? "Could not update your response.");
+        return;
+      }
       router.refresh();
     } finally {
       setRespondingIds((prev) => {
@@ -129,6 +135,40 @@ export function MembersRunLogTable({
         next.delete(runId);
         return next;
       });
+    }
+  }
+
+  async function handleToggleLock() {
+    if (month === "all") return;
+    const locking = !selectedLock;
+    if (
+      locking &&
+      !confirm(
+        `Lock ${monthLabel(month)}? Members will no longer be able to mark or unmark ` +
+          "themselves as responded to its calls."
+      )
+    ) {
+      return;
+    }
+
+    const token = await getToken();
+    if (!token) return;
+
+    setLockBusy(true);
+    try {
+      const res = await fetch("/api/run-locks", {
+        method: locking ? "POST" : "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ month }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error ?? `Could not ${locking ? "lock" : "unlock"} this month.`);
+        return;
+      }
+      router.refresh();
+    } finally {
+      setLockBusy(false);
     }
   }
 
@@ -206,6 +246,16 @@ export function MembersRunLogTable({
           />
           {isAdmin && (
             <Group gap="xs">
+              {month !== "all" && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  loading={lockBusy}
+                  onClick={handleToggleLock}
+                >
+                  {selectedLock ? "Unlock Month" : "Lock Month"}
+                </Button>
+              )}
               <Button
                 component={Link}
                 href={`/members/run-log/export?month=${month}`}
@@ -222,6 +272,13 @@ export function MembersRunLogTable({
         </Group>
       </Box>
 
+      {selectedLock && (
+        <Alert color="gray" variant="light" mb="md" title={`${monthLabel(month)} is locked`}>
+          Responses for this month can no longer be changed. Locked by{" "}
+          {selectedLock.lockedBy} on {formatDate(selectedLock.lockedAt)}.
+        </Alert>
+      )}
+
       {/* Mobile card view */}
       <Box hiddenFrom="sm">
         {filteredRuns.length === 0 ? (
@@ -232,21 +289,29 @@ export function MembersRunLogTable({
           <Stack gap="sm">
             {filteredRuns.map((run) => {
               const hasResponded = run.respondedMembers.includes(memberName);
+              const lock = lockOf(run);
               return (
                 <Card key={run.id} withBorder padding="sm" radius="md">
                   <Group justify="space-between" mb={4}>
                     <Text size="sm" fw={600}>
                       {run.date ? formatDate(run.date) : "-"}
                     </Text>
-                    {run.callType && (
-                      <Badge
-                        color={callTypeColors[run.callType] ?? "gray"}
-                        variant="light"
-                        size="sm"
-                      >
-                        {run.callType}
-                      </Badge>
-                    )}
+                    <Group gap={4} wrap="nowrap">
+                      {lock && (
+                        <Badge color="gray" variant="light" size="sm">
+                          Locked
+                        </Badge>
+                      )}
+                      {run.callType && (
+                        <Badge
+                          color={callTypeColors[run.callType] ?? "gray"}
+                          variant="light"
+                          size="sm"
+                        >
+                          {run.callType}
+                        </Badge>
+                      )}
+                    </Group>
                   </Group>
 
                   {run.address && (
@@ -287,6 +352,7 @@ export function MembersRunLogTable({
                       size="compact-sm"
                       fullWidth
                       loading={respondingIds.has(run.id)}
+                      disabled={!!lock}
                       onClick={() => handleRespond(run.id)}
                     >
                       {hasResponded ? "✓ Responded" : "Mark as Responded"}
@@ -348,10 +414,18 @@ export function MembersRunLogTable({
               ) : (
                 filteredRuns.map((run) => {
                   const hasResponded = run.respondedMembers.includes(memberName);
+                  const lock = lockOf(run);
                   return (
                     <Table.Tr key={run.id}>
                       <Table.Td style={{ whiteSpace: "nowrap" }}>
-                        {run.date ? formatDate(run.date) : "-"}
+                        <Group gap={6} wrap="nowrap">
+                          {run.date ? formatDate(run.date) : "-"}
+                          {lock && (
+                            <Badge color="gray" variant="light" size="sm">
+                              Locked
+                            </Badge>
+                          )}
+                        </Group>
                       </Table.Td>
                       <Table.Td>{run.address ?? "-"}</Table.Td>
                       <Table.Td>
@@ -393,21 +467,28 @@ export function MembersRunLogTable({
                         <Group gap="xs" wrap="nowrap">
                           <Tooltip
                             label={
-                              hasResponded
-                                ? "Remove your response"
-                                : "Mark as responded"
+                              lock
+                                ? `${monthLabel(lock.month)} is locked`
+                                : hasResponded
+                                  ? "Remove your response"
+                                  : "Mark as responded"
                             }
                           >
-                            <ActionIcon
-                              variant={hasResponded ? "filled" : "light"}
-                              color={hasResponded ? "green" : "gray"}
-                              size="sm"
-                              loading={respondingIds.has(run.id)}
-                              onClick={() => handleRespond(run.id)}
-                              aria-label="Toggle responded"
-                            >
-                              {"\u2713"}
-                            </ActionIcon>
+                            {/* A disabled control drops pointer events, so the
+                                tooltip needs a wrapper that still receives them. */}
+                            <Box>
+                              <ActionIcon
+                                variant={hasResponded ? "filled" : "light"}
+                                color={hasResponded ? "green" : "gray"}
+                                size="sm"
+                                loading={respondingIds.has(run.id)}
+                                disabled={!!lock}
+                                onClick={() => handleRespond(run.id)}
+                                aria-label="Toggle responded"
+                              >
+                                {"\u2713"}
+                              </ActionIcon>
+                            </Box>
                           </Tooltip>
                           {isAdmin && (
                             <>

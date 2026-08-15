@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenUser } from "@/lib/auth";
-import { toggleRespondedMember } from "@/lib/runs";
+import { toggleRespondedMember, getRunDate } from "@/lib/runs";
+import { isMonthLocked } from "@/lib/run-locks";
+import { monthKey, monthLabel } from "@/lib/month";
 
 export async function POST(
   request: NextRequest,
@@ -12,6 +14,21 @@ export async function POST(
   }
 
   const { id } = await params;
+
+  // Once a month is locked nobody self-serves a response change in it —
+  // admins included, so the month's numbers stay put. Admins can still
+  // correct a run through the edit form.
+  const runDate = await getRunDate(id);
+  if (runDate) {
+    const month = monthKey(runDate);
+    if (await isMonthLocked(month)) {
+      return NextResponse.json(
+        { error: `${monthLabel(month)} is locked — responses can no longer be changed.` },
+        { status: 403 }
+      );
+    }
+  }
+
   const body = await request.json().catch(() => ({}));
   const memberName = body.memberName || user.email;
   try {

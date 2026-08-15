@@ -1,5 +1,6 @@
 import { Container, Title, Text } from "@mantine/core";
 import { getRunLog, getRunFormOptions } from "@/lib/runs";
+import { getLockedMonths } from "@/lib/run-locks";
 import { MembersRunLogTable } from "./MembersRunLogTable";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +14,10 @@ export default async function MembersRunLogPage({
 }: {
   searchParams: Promise<{ month?: string }>;
 }) {
-  const [runs, formOptions, { month }] = await Promise.all([
+  const [runs, formOptions, lockedMonths, { month }] = await Promise.all([
     getRunLog(),
     getRunFormOptions(),
+    getLockedMonths(),
     searchParams,
   ]);
 
@@ -28,6 +30,7 @@ export default async function MembersRunLogPage({
       <MembersRunLogTable
         initialRuns={runs}
         formOptions={formOptions}
+        lockedMonths={lockedMonths}
         initialMonth={month ?? "all"}
       />
     </Container>
