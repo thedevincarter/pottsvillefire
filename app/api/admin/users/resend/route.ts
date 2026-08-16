@@ -23,6 +23,12 @@ export async function POST(request: NextRequest) {
   if (error || !profile) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
+  if (!profile.email) {
+    return NextResponse.json(
+      { error: "This member has no email yet — add one to send an invite" },
+      { status: 400 }
+    );
+  }
 
   const { error: inviteError } = await sendInviteEmail({
     origin: getOrigin(request),

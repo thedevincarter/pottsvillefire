@@ -19,11 +19,13 @@ import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
 import { RANKS } from "@/lib/ranks";
 
-type UserStatus = "invited" | "active" | "disabled";
+// "roster" is someone on the roster with no email and so no login — they can
+// be marked as responding to calls, but can't sign in until they're invited.
+type UserStatus = "roster" | "invited" | "active" | "disabled";
 
 type UserProfile = {
   id: string;
-  email: string;
+  email: string | null;
   full_name: string;
   role: string;
   phone: string | null;
@@ -35,6 +37,7 @@ type UserProfile = {
 };
 
 const statusColors: Record<UserStatus, string> = {
+  roster: "blue",
   invited: "yellow",
   active: "green",
   disabled: "gray",
@@ -133,7 +136,7 @@ export function UserManager() {
                   {[u.rank, u.number ? `#${u.number}` : null].filter(Boolean).join(" · ")}
                 </Text>
               )}
-              <Text size="xs" c="dimmed">{u.email}</Text>
+              <Text size="xs" c="dimmed">{u.email ?? "No email yet"}</Text>
               {u.phone && <Text size="xs" c="dimmed">{u.phone}</Text>}
               <Text size="xs" c="dimmed">
                 Last login: {formatLastLogin(u.last_sign_in_at)}
@@ -165,7 +168,13 @@ export function UserManager() {
                 <Table.Td>{u.full_name}</Table.Td>
                 <Table.Td>{u.rank || "-"}</Table.Td>
                 <Table.Td>{u.number || "-"}</Table.Td>
-                <Table.Td>{u.email}</Table.Td>
+                <Table.Td>
+                  {u.email ?? (
+                    <Text size="sm" c="dimmed">
+                      No email yet
+                    </Text>
+                  )}
+                </Table.Td>
                 <Table.Td>{u.phone || "-"}</Table.Td>
                 <Table.Td>
                   <Badge color={statusColors[u.status]} variant="light" size="sm">
@@ -271,6 +280,8 @@ function AddUserModal({
     }
   }
 
+  const hasEmail = email.trim().length > 0;
+
   return (
     <Modal
       opened={opened}
@@ -280,9 +291,20 @@ function AddUserModal({
     >
       {sent ? (
         <Stack gap="md" py="md">
-          <Text fw={600} ta="center">Invite sent!</Text>
+          <Text fw={600} ta="center">
+            {hasEmail ? "Invite sent!" : "Added to the roster"}
+          </Text>
           <Text size="sm" c="dimmed" ta="center">
-            An invite email has been sent to <strong>{email}</strong>. They can use the link in the email to set their password and log in.
+            {hasEmail ? (
+              <>
+                An invite email has been sent to <strong>{email}</strong>. They can use the link in the email to set their password and log in.
+              </>
+            ) : (
+              <>
+                <strong>{fullName}</strong> is on the roster and can be marked as
+                responding to calls. Add an email later to send them a login.
+              </>
+            )}
           </Text>
           <Group justify="center">
             <Button onClick={() => { reset(); onClose(); }}>Done</Button>
@@ -300,10 +322,10 @@ function AddUserModal({
             />
             <TextInput
               label="Email"
+              description="Leave blank to add them to the roster without a login"
               placeholder="john@example.com"
               value={email}
               onChange={(e) => setEmail(e.currentTarget.value)}
-              required
               type="email"
             />
             <NativeSelect
@@ -334,7 +356,7 @@ function AddUserModal({
                 Cancel
               </Button>
               <Button type="submit" color="red" loading={saving}>
-                Send Invite
+                {hasEmail ? "Send Invite" : "Add to Roster"}
               </Button>
             </Group>
           </Stack>
@@ -362,10 +384,13 @@ function EditUserModal({
   const [phone, setPhone] = useState("");
   const [rank, setRank] = useState("");
   const [number, setNumber] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"resend" | "disable" | null>(null);
+  const [busy, setBusy] = useState<"resend" | "disable" | "promote" | null>(null);
   const [resent, setResent] = useState(false);
+
+  const isRosterOnly = user?.status === "roster";
 
   // Sync form when user changes
   const [lastId, setLastId] = useState<string | null>(null);
@@ -376,6 +401,7 @@ function EditUserModal({
     setPhone(user.phone || "");
     setRank(user.rank || "");
     setNumber(user.number || "");
+    setNewEmail("");
     setError(null);
     setResent(false);
   }
@@ -425,6 +451,30 @@ function EditUserModal({
     else setResent(true);
   }
 
+  // Giving a roster-only member an email creates their login and invites them.
+  async function handlePromote() {
+    if (!user || !newEmail.trim()) return;
+    setError(null);
+    setBusy("promote");
+    const token = await getToken();
+    if (!token) return;
+
+    const res = await fetch("/api/admin/users/promote", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ id: user.id, email: newEmail.trim() }),
+    });
+    const data = await res.json();
+    setBusy(null);
+
+    if (!res.ok) {
+      setError(data.error);
+    } else {
+      onSaved();
+      onClose();
+    }
+  }
+
   async function handleDisable(disabled: boolean) {
     if (!user) return;
     setError(null);
@@ -452,7 +502,18 @@ function EditUserModal({
     <Modal opened={!!user} onClose={onClose} title="Edit User" size="sm">
       <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
         <Stack gap="sm">
-          <TextInput label="Email" value={user?.email ?? ""} disabled />
+          {isRosterOnly ? (
+            <TextInput
+              label="Email"
+              description="Adding an email creates their login and sends an invite"
+              placeholder="john@example.com"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.currentTarget.value)}
+              type="email"
+            />
+          ) : (
+            <TextInput label="Email" value={user?.email ?? ""} disabled />
+          )}
           <TextInput
             label="Full Name"
             value={fullName}
@@ -491,6 +552,18 @@ function EditUserModal({
             <>
               <Divider mt="xs" />
               <Group justify="flex-end" gap="xs">
+                {isRosterOnly && (
+                  <Button
+                    type="button"
+                    variant="light"
+                    size="compact-sm"
+                    loading={busy === "promote"}
+                    disabled={!newEmail.trim()}
+                    onClick={handlePromote}
+                  >
+                    Create login & invite
+                  </Button>
+                )}
                 {user?.status === "invited" && (
                   <Button
                     type="button"
@@ -503,16 +576,20 @@ function EditUserModal({
                     {resent ? "Invite sent" : "Resend invite"}
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  variant="light"
-                  color={user?.status === "disabled" ? "green" : "red"}
-                  size="compact-sm"
-                  loading={busy === "disable"}
-                  onClick={() => handleDisable(user?.status !== "disabled")}
-                >
-                  {user?.status === "disabled" ? "Enable" : "Disable"}
-                </Button>
+                {/* Disabling bans the auth user, which a roster-only member
+                    doesn't have — there's no login to take away yet. */}
+                {!isRosterOnly && (
+                  <Button
+                    type="button"
+                    variant="light"
+                    color={user?.status === "disabled" ? "green" : "red"}
+                    size="compact-sm"
+                    loading={busy === "disable"}
+                    onClick={() => handleDisable(user?.status !== "disabled")}
+                  >
+                    {user?.status === "disabled" ? "Enable" : "Disable"}
+                  </Button>
+                )}
               </Group>
             </>
           )}

@@ -39,13 +39,24 @@ async function getDistinctValues(table: string, column: string): Promise<string[
 }
 
 export async function getRunFormOptions(): Promise<RunFormOptions> {
-  const [callTypes, complaints, mutualAidDepts, memberRows] = await Promise.all([
-    getDistinctValues("runs", "call_type"),
-    getDistinctValues("runs", "complaint"),
-    getDistinctValues("runs", "mutual_aid"),
-    getDistinctValues("run_responses", "member_name"),
-  ]);
-  return { callTypes, complaints, mutualAidDepts, memberNames: memberRows };
+  const [callTypes, complaints, mutualAidDepts, respondedNames, rosterNames] =
+    await Promise.all([
+      getDistinctValues("runs", "call_type"),
+      getDistinctValues("runs", "complaint"),
+      getDistinctValues("runs", "mutual_aid"),
+      getDistinctValues("run_responses", "member_name"),
+      getRosterNames(),
+    ]);
+
+  // The roster is the source of truth for who can be marked as responding —
+  // without it a member who has never responded (including anyone added
+  // without an email) would never appear in the picker. Names only seen on
+  // historical responses are kept so old records stay editable.
+  const memberNames = [...new Set([...rosterNames, ...respondedNames])].sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  return { callTypes, complaints, mutualAidDepts, memberNames };
 }
 
 /** Roster names in alphabetical order, used for the run log export columns. */

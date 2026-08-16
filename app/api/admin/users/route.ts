@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenUser, isAdmin } from "@/lib/auth";
 import { getOrigin, sendInviteEmail } from "@/lib/invite";
+import { createRosterOnlyMember } from "@/lib/roster";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(request: NextRequest) {
@@ -31,11 +32,17 @@ export async function GET(request: NextRequest) {
     const disabled = !!bannedUntil && new Date(bannedUntil) > new Date();
     const lastSignInAt = authUser?.last_sign_in_at ?? null;
 
-    return {
-      ...profile,
-      last_sign_in_at: lastSignInAt,
-      status: disabled ? "disabled" : lastSignInAt ? "active" : "invited",
-    };
+    // No auth user at all means a roster-only member — on the roster, but with
+    // no email and so no way to log in yet.
+    const status = !authUser
+      ? "roster"
+      : disabled
+        ? "disabled"
+        : lastSignInAt
+          ? "active"
+          : "invited";
+
+    return { ...profile, last_sign_in_at: lastSignInAt, status };
   });
 
   return NextResponse.json({ users });
@@ -49,8 +56,21 @@ export async function POST(request: NextRequest) {
 
   try {
     const { email, fullName, role, rank, number } = await request.json();
-    if (!email || !fullName) {
-      return NextResponse.json({ error: "Email and full name are required" }, { status: 400 });
+    if (!fullName?.trim()) {
+      return NextResponse.json({ error: "A full name is required" }, { status: 400 });
+    }
+
+    // No email means a roster-only member: a profile with no login, so they can
+    // be marked as responding to calls before they have an address.
+    if (!email?.trim()) {
+      const { id, error } = await createRosterOnlyMember({
+        fullName: fullName.trim(),
+        role,
+        rank: rank || null,
+        number: number || null,
+      });
+      if (error) return NextResponse.json({ error }, { status: 400 });
+      return NextResponse.json({ ok: true, userId: id, rosterOnly: true });
     }
 
     const origin = getOrigin(request);
