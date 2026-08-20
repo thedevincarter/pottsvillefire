@@ -26,6 +26,29 @@ type Props = {
   timeLabel?: string;
 };
 
+/**
+ * A timestamp from the database -> the "YYYY-MM-DD HH:mm:ss" Central wall-clock
+ * string this field takes as its value.
+ *
+ * Note the `dayjs(iso).tz(TZ)` ordering: it parses the instant (honouring the
+ * stored offset) and then converts it to Central. `dayjs.tz(iso, TZ)` looks
+ * similar but does the opposite — it reads the string's clock time as if it
+ * were already Central, so a UTC 14:57 would open the editor as 14:57 instead
+ * of 09:57 and re-saving would shift the run by the offset.
+ */
+export function isoToCentral(isoDate: string | null): string | null {
+  if (!isoDate) return null;
+  // Legacy date-only rows carry no offset, so they're already wall-clock.
+  const parsed = isoDate.includes("T") ? dayjs(isoDate).tz(TZ) : dayjs.tz(isoDate, TZ);
+  return parsed.format("YYYY-MM-DD HH:mm:ss");
+}
+
+/** The inverse: a Central wall-clock string -> an ISO timestamp with offset. */
+export function centralToISO(dateStr: string | null): string {
+  if (!dateStr) return "";
+  return dayjs.tz(dateStr, TZ).format("YYYY-MM-DDTHH:mm:ssZ");
+}
+
 function split(value: string | null): { date: string | null; time: string } {
   if (!value) return { date: null, time: "" };
   const [date, time] = value.split(" ");

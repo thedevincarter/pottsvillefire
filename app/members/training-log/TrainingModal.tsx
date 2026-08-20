@@ -14,25 +14,12 @@ import {
   Textarea,
   TextInput,
 } from "@mantine/core";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
-import { DateTimeField } from "@/app/components/DateTimeField";
+import {
+  DateTimeField,
+  centralToISO,
+  isoToCentral,
+} from "@/app/components/DateTimeField";
 import type { TrainingEntry, TrainingFormOptions } from "@/lib/trainings";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const TZ = "America/Chicago";
-
-// Central date <-> ISO helpers, matching what DateTimeField keeps in state.
-function toDateString(isoDate: string): string {
-  return dayjs.tz(isoDate, TZ).format("YYYY-MM-DD HH:mm:ss");
-}
-
-function toISOCentral(dateStr: string): string {
-  return dayjs.tz(dateStr, TZ).format("YYYY-MM-DDTHH:mm:ssZ");
-}
 
 type Props = {
   opened: boolean;
@@ -67,7 +54,7 @@ export function TrainingModal({
   // editing, otherwise start blank. (Same pattern as the run-log modal.)
   useEffect(() => {
     if (!opened) return;
-    setDate(initialData?.date ? toDateString(initialData.date) : null);
+    setDate(isoToCentral(initialData?.date ?? null));
     setTotalHours(initialData?.totalHours ?? "");
     setSubjects(initialData?.subjects ?? []);
     setAutomaticAid(initialData?.automaticAid ?? false);
@@ -83,7 +70,7 @@ export function TrainingModal({
     setSaving(true);
     try {
       await onSave({
-        date: date ? toISOCentral(date) : "",
+        date: centralToISO(date),
         totalHours: totalHours === "" ? null : totalHours,
         subjects,
         automaticAid,

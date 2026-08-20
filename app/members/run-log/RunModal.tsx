@@ -2,17 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Button, Group, Modal, MultiSelect, Stack, TextInput } from "@mantine/core";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
-import timezone from "dayjs/plugin/timezone";
 import { CreatableSelect } from "@/app/components/CreatableSelect";
-import { DateTimeField } from "@/app/components/DateTimeField";
+import {
+  DateTimeField,
+  centralToISO,
+  isoToCentral,
+} from "@/app/components/DateTimeField";
 import type { RunLogEntry, RunFormOptions } from "@/lib/runs";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-const TZ = "America/Chicago";
 
 type Props = {
   opened: boolean;
@@ -22,16 +18,6 @@ type Props = {
   initialData?: RunLogEntry;
   options: RunFormOptions;
 };
-
-function toDateString(isoDate: string | null): string | null {
-  if (!isoDate) return null;
-  return dayjs.tz(isoDate, TZ).format("YYYY-MM-DD HH:mm:ss");
-}
-
-function toISOCentral(dateStr: string | null): string {
-  if (!dateStr) return "";
-  return dayjs.tz(dateStr, TZ).format("YYYY-MM-DDTHH:mm:ssZ");
-}
 
 export function RunModal({
   opened,
@@ -54,7 +40,7 @@ export function RunModal({
   // avoids wiping the fields mid close-animation.
   useEffect(() => {
     if (!opened) return;
-    setDate(toDateString(initialData?.date ?? null));
+    setDate(isoToCentral(initialData?.date ?? null));
     setAddress(initialData?.address ?? "");
     setCallType(initialData?.callType ?? null);
     setComplaint(initialData?.complaint ?? null);
@@ -66,7 +52,7 @@ export function RunModal({
     setSaving(true);
     try {
       await onSave({
-        date: toISOCentral(date),
+        date: centralToISO(date),
         address,
         callType: callType ?? "",
         complaint: complaint ?? "",
