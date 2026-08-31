@@ -23,6 +23,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { useAuth } from "@/app/components/auth/AuthProvider";
 import type { ApparatusCheck, ApparatusCheckSummary, Apparatus, CheckItem } from "@/lib/apparatus";
+import type { OpenCheckMonth } from "@/lib/check-months";
 
 function formatMonth(month: string) {
   const [year, m] = month.split("-");
@@ -334,22 +335,198 @@ function AdminSettings({
   );
 }
 
+// One month's apparatus cards. Rendered once for the current month, and again
+// for next month when an admin has opened it early.
+function MonthChecks({
+  month,
+  checks,
+  early,
+  isAdmin,
+  startingKey,
+  onStart,
+}: {
+  month: string;
+  checks: ApparatusCheckSummary[];
+  early?: boolean;
+  isAdmin: boolean;
+  startingKey: string | null;
+  onStart: (month: string, apparatusId: string) => void;
+}) {
+  const router = useRouter();
+
+  return (
+    <Box>
+      <Group gap="xs" mb="md">
+        <Text fw={600}>{formatMonth(month)}</Text>
+        {early && (
+          <Badge color="blue" variant="light" size="sm">
+            Opened early
+          </Badge>
+        )}
+      </Group>
+      <Stack gap="sm">
+        {checks.map((mc) => {
+          const isChecked = !!mc.completedAt;
+          const inProgress = mc.checkId && !mc.completedAt;
+          return (
+            <Card key={mc.apparatusId} withBorder padding="sm" radius="md">
+              <Group justify="space-between" wrap="nowrap">
+                <Box>
+                  <Text fw={600} size="sm">{mc.apparatusName}</Text>
+                  {mc.memberName && (
+                    <Text size="xs" c="dimmed">
+                      {isChecked ? "Completed by" : "In progress by"} {mc.memberName}
+                    </Text>
+                  )}
+                </Box>
+                {isChecked ? (
+                  <Group gap="xs" wrap="nowrap">
+                    <Badge color="green" variant="light" size="lg">
+                      Complete
+                    </Badge>
+                    {isAdmin && (
+                      <Button
+                        component={Link}
+                        href={`/members/apparatus-checks/${mc.checkId}/print`}
+                        size="compact-sm"
+                        variant="light"
+                        color="gray"
+                      >
+                        Print
+                      </Button>
+                    )}
+                  </Group>
+                ) : inProgress ? (
+                  <Button
+                    size="compact-sm"
+                    color="yellow"
+                    variant="light"
+                    onClick={() => router.push(`/members/apparatus-checks/${mc.checkId}`)}
+                  >
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    size="compact-sm"
+                    color="red"
+                    loading={startingKey === `${month}:${mc.apparatusId}`}
+                    onClick={() => onStart(month, mc.apparatusId)}
+                  >
+                    Start Check
+                  </Button>
+                )}
+              </Group>
+            </Card>
+          );
+        })}
+        {checks.length === 0 && (
+          <Text c="dimmed" ta="center" py="md">
+            No apparatus configured. {isAdmin ? "Add some in Settings." : "Ask an admin to set up apparatus."}
+          </Text>
+        )}
+      </Stack>
+    </Box>
+  );
+}
+
+// Admins can open next month's checks before the 1st — for the months where
+// check night lands before the month starts, like a holiday first Monday.
+function NextMonthControl({
+  nextMonth,
+  open,
+  hasChecks,
+  getToken,
+}: {
+  nextMonth: string;
+  open: OpenCheckMonth | null;
+  hasChecks: boolean;
+  getToken: () => Promise<string | null>;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function toggle() {
+    const opening = !open;
+    if (
+      !opening &&
+      !confirm(
+        `Close ${formatMonth(nextMonth)} checks?` +
+          (hasChecks
+            ? " Checks already started stay saved, but no new ones can be started until the month arrives."
+            : " Members won't be able to start them until the month arrives.")
+      )
+    ) {
+      return;
+    }
+
+    const token = await getToken();
+    if (!token) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch("/api/check-months", {
+        method: opening ? "POST" : "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ month: nextMonth }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error ?? `Could not ${opening ? "open" : "close"} that month.`);
+        return;
+      }
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card withBorder padding="sm" radius="md">
+      <Group justify="space-between" wrap="nowrap">
+        <Box>
+          <Text size="sm" fw={600}>Next month</Text>
+          <Text size="xs" c="dimmed">
+            {open
+              ? `${formatMonth(nextMonth)} checks are open early — opened by ${open.openedBy} on ${formatDate(open.openedAt)}.`
+              : `${formatMonth(nextMonth)} checks open on the 1st. Open them early if check night falls before then.`}
+          </Text>
+        </Box>
+        <Button
+          size="compact-sm"
+          variant="light"
+          color={open ? "gray" : "red"}
+          loading={busy}
+          onClick={toggle}
+        >
+          {open ? "Close" : "Open Early"}
+        </Button>
+      </Group>
+    </Card>
+  );
+}
+
 export function ApparatusChecksList({
   currentMonth,
   monthChecks,
+  nextMonth,
+  nextMonthOpen,
+  nextMonthChecks,
   history,
   allApparatus,
   allCheckItems,
 }: {
   currentMonth: string;
   monthChecks: ApparatusCheckSummary[];
+  nextMonth: string;
+  nextMonthOpen: OpenCheckMonth | null;
+  nextMonthChecks: ApparatusCheckSummary[];
   history: ApparatusCheck[];
   allApparatus: Apparatus[];
   allCheckItems: CheckItem[];
 }) {
   const { user, profile, isAdmin, getToken } = useAuth();
   const router = useRouter();
-  const [startingId, setStartingId] = useState<string | null>(null);
+  const [startingKey, setStartingKey] = useState<string | null>(null);
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
   const [historyMonth, setHistoryMonth] = useState("all");
   const [historyApparatus, setHistoryApparatus] = useState("all");
@@ -357,16 +534,16 @@ export function ApparatusChecksList({
 
   const memberName = profile?.fullName || user?.email || "";
 
-  async function handleStartCheck(apparatusId: string) {
+  async function handleStartCheck(month: string, apparatusId: string) {
     const token = await getToken();
     if (!token) return;
 
-    setStartingId(apparatusId);
+    setStartingKey(`${month}:${apparatusId}`);
     try {
       const res = await fetch("/api/apparatus-checks", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ apparatusId, month: currentMonth, memberName }),
+        body: JSON.stringify({ apparatusId, month, memberName }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -375,7 +552,7 @@ export function ApparatusChecksList({
         alert(data.error);
       }
     } finally {
-      setStartingId(null);
+      setStartingKey(null);
     }
   }
 
@@ -420,66 +597,31 @@ export function ApparatusChecksList({
         </Tabs.List>
 
         <Tabs.Panel value="current">
-          <Text fw={600} mb="md">{formatMonth(currentMonth)}</Text>
-          <Stack gap="sm">
-            {monthChecks.map((mc) => {
-              const isChecked = !!mc.completedAt;
-              const inProgress = mc.checkId && !mc.completedAt;
-              return (
-                <Card key={mc.apparatusId} withBorder padding="sm" radius="md">
-                  <Group justify="space-between" wrap="nowrap">
-                    <Box>
-                      <Text fw={600} size="sm">{mc.apparatusName}</Text>
-                      {mc.memberName && (
-                        <Text size="xs" c="dimmed">
-                          {isChecked ? "Completed by" : "In progress by"} {mc.memberName}
-                        </Text>
-                      )}
-                    </Box>
-                    {isChecked ? (
-                      <Group gap="xs" wrap="nowrap">
-                        <Badge color="green" variant="light" size="lg">
-                          Complete
-                        </Badge>
-                        {isAdmin && (
-                          <Button
-                            component={Link}
-                            href={`/members/apparatus-checks/${mc.checkId}/print`}
-                            size="compact-sm"
-                            variant="light"
-                            color="gray"
-                          >
-                            Print
-                          </Button>
-                        )}
-                      </Group>
-                    ) : inProgress ? (
-                      <Button
-                        size="compact-sm"
-                        color="yellow"
-                        variant="light"
-                        onClick={() => router.push(`/members/apparatus-checks/${mc.checkId}`)}
-                      >
-                        Continue
-                      </Button>
-                    ) : (
-                      <Button
-                        size="compact-sm"
-                        color="red"
-                        loading={startingId === mc.apparatusId}
-                        onClick={() => handleStartCheck(mc.apparatusId)}
-                      >
-                        Start Check
-                      </Button>
-                    )}
-                  </Group>
-                </Card>
-              );
-            })}
-            {monthChecks.length === 0 && (
-              <Text c="dimmed" ta="center" py="md">
-                No apparatus configured. {isAdmin ? "Add some in Settings." : "Ask an admin to set up apparatus."}
-              </Text>
+          <Stack gap="lg">
+            {nextMonthOpen && (
+              <MonthChecks
+                month={nextMonth}
+                checks={nextMonthChecks}
+                early
+                isAdmin={isAdmin}
+                startingKey={startingKey}
+                onStart={handleStartCheck}
+              />
+            )}
+            <MonthChecks
+              month={currentMonth}
+              checks={monthChecks}
+              isAdmin={isAdmin}
+              startingKey={startingKey}
+              onStart={handleStartCheck}
+            />
+            {isAdmin && (
+              <NextMonthControl
+                nextMonth={nextMonth}
+                open={nextMonthOpen}
+                hasChecks={nextMonthChecks.some((c) => c.checkId)}
+                getToken={getToken}
+              />
             )}
           </Stack>
         </Tabs.Panel>

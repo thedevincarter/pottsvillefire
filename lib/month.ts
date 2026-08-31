@@ -36,3 +36,16 @@ export function monthLabel(key: string): string {
 export function isMonthKey(value: unknown): value is string {
   return typeof value === "string" && MONTH_KEY.test(value);
 }
+
+/** The 'YYYY-MM' month it is right now in department-local time. */
+export function currentMonthKey(): string {
+  return monthKey(new Date().toISOString());
+}
+
+/** The 'YYYY-MM' month after the given one. */
+export function nextMonthKey(key: string): string {
+  const [year, month] = key.split("-").map(Number);
+  return month === 12
+    ? `${year + 1}-01`
+    : `${year}-${String(month + 1).padStart(2, "0")}`;
+}
